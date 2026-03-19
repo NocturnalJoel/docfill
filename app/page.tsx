@@ -51,7 +51,7 @@ export default function LandingPage() {
             href="/subscribe"
             className="flex items-center gap-2 bg-black text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-black/80 transition-all group"
           >
-            Get Started — $499/mo
+            Get Started
             <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
           </Link>
           <a
@@ -182,13 +182,13 @@ export default function LandingPage() {
         <div className="max-w-3xl mx-auto px-6 text-center">
           <h2 className="text-4xl font-black mb-4 leading-tight">Ready to slay the paperwork?</h2>
           <p className="text-white/50 text-lg mb-10">
-            One flat rate. Unlimited documents, clients, and templates.
+            Unlimited documents, clients, and templates. One simple plan.
           </p>
           <Link
             href="/subscribe"
             className="inline-flex items-center gap-2 bg-white text-black px-10 py-4 rounded-xl font-bold text-lg hover:bg-white/90 transition-all group"
           >
-            Get Started — $499/mo
+            Get Started
             <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
           </Link>
           <p className="text-white/30 text-sm mt-4">Cancel anytime.</p>
