@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
+import { getStripe } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.text();
 
+  const stripe = getStripe();
   let event;
   try {
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
