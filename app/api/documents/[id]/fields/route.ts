@@ -8,9 +8,10 @@ export const dynamic = 'force-dynamic';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -19,14 +20,13 @@ export async function PUT(
     const { fields, pageCount } = body as { fields: DetectedField[]; pageCount?: number };
 
     const admin = createAdminClient();
-
     const updateData: Record<string, unknown> = { fields };
     if (pageCount !== undefined) updateData.page_count = pageCount;
 
     const { data, error } = await admin
       .from('client_documents')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .select()
       .single();

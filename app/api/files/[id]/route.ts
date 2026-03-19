@@ -7,17 +7,16 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { id } = params;
     const admin = createAdminClient();
 
-    // Serve HTML sidecar for Word documents
     if (request.nextUrl.searchParams.get('html') === 'true') {
       const htmlPath = `${user.id}/${id}.html`;
       const { data: htmlData, error } = await admin.storage.from('uploads').download(htmlPath);
@@ -26,7 +25,6 @@ export async function GET(
       return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
 
-    // Look up the file_url (storage path) from DB — check both templates and client_documents
     let storagePath: string | null = null;
     let fileExt = '';
 

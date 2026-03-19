@@ -8,9 +8,10 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -19,7 +20,7 @@ export async function GET(
     const { data, error } = await admin
       .from('templates')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .single();
 
@@ -45,9 +46,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -63,7 +65,7 @@ export async function PUT(
     const { data, error } = await admin
       .from('templates')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .select()
       .single();
@@ -90,36 +92,33 @@ export async function PUT(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const admin = createAdminClient();
 
-    // Get the record first to find the storage path
     const { data: row } = await admin
       .from('templates')
       .select('file_url, file_type')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .single();
 
     if (!row) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
 
-    // Delete from Storage
     const filesToDelete = [row.file_url];
-    if (row.file_type === 'word') {
-      filesToDelete.push(`${user.id}/${params.id}.html`);
-    }
+    if (row.file_type === 'word') filesToDelete.push(`${user.id}/${id}.html`);
     await admin.storage.from('uploads').remove(filesToDelete);
 
     const { error } = await admin
       .from('templates')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id);
 
     if (error) return NextResponse.json({ error: 'Failed to delete template' }, { status: 500 });
