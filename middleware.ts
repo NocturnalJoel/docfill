@@ -23,7 +23,6 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session — required for Server Components to get fresh auth state
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
