@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { FileText, CheckCircle, ArrowRight, Shield, Zap } from 'lucide-react';
+import { FileText, CheckCircle, ArrowRight, Shield, Zap, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 const included = [
   'Unlimited client documents',
@@ -15,11 +16,28 @@ const included = [
 ];
 
 export default function SubscribePage() {
-  const handleSubscribe = () => {
-    // TODO: Replace with Stripe Checkout
-    // const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
-    // await stripe.redirectToCheckout({ priceId: 'price_XXXXX' })
-    window.location.href = '/signup';
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubscribe = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+      const data = await res.json();
+
+      if (!res.ok || !data.url) {
+        setError(data.error ?? 'Something went wrong. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      window.location.href = data.url;
+    } catch {
+      setError('Something went wrong. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -55,12 +73,25 @@ export default function SubscribePage() {
             </div>
             <p className="text-white/40 text-sm mb-8">Billed monthly. Cancel anytime.</p>
 
+            {error && (
+              <div className="bg-white/10 border border-white/20 text-white/80 text-sm rounded-xl p-3 mb-4">
+                {error}
+              </div>
+            )}
+
             <button
               onClick={handleSubscribe}
-              className="w-full bg-white text-black py-4 rounded-xl font-bold text-base hover:bg-white/90 transition-colors flex items-center justify-center gap-2 group"
+              disabled={isLoading}
+              className="w-full bg-white text-black py-4 rounded-xl font-bold text-base hover:bg-white/90 transition-colors flex items-center justify-center gap-2 group disabled:opacity-60"
             >
-              Subscribe Now
-              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              {isLoading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <>
+                  Subscribe Now
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
 
             <div className="mt-6 flex items-center gap-2 text-white/30 text-xs justify-center">
