@@ -5,8 +5,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'DocFill – Document Automation for Businesses',
-  description: 'Upload client documents, detect fields automatically, and fill templates instantly.',
+  title: 'PaperworkSlayer – Document Automation',
+  description: 'Stop drowning in paperwork. Upload client documents, extract fields automatically, and fill any template in seconds.',
 };
 
 export default function RootLayout({

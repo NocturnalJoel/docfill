@@ -33,9 +33,9 @@ export default function Navbar({ email }: { email?: string }) {
           <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
             <FileText size={16} className="text-white" />
           </div>
-          <span className="text-white font-bold text-lg tracking-tight">DocFill</span>
+          <span className="text-white font-bold text-lg tracking-tight">PaperworkSlayer</span>
         </div>
-        <p className="text-white/40 text-xs mt-1">Document automation</p>
+        <p className="text-white/40 text-xs mt-1">by Loophole Media Inc.</p>
       </div>
 
       {/* Navigation */}

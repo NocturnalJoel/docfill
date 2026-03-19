@@ -39,16 +39,16 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="w-full max-w-md text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileText size={28} className="text-green-600" />
+          <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4">
+            <FileText size={28} className="text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Check your email</h2>
-          <p className="text-gray-500 mb-6">
-            We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
+          <h2 className="text-2xl font-bold text-black mb-2">Check your email</h2>
+          <p className="text-black/50 mb-6">
+            We sent a confirmation link to <strong className="text-black">{email}</strong>. Click it to activate your account.
           </p>
-          <Link href="/login" className="text-blue-500 font-medium hover:underline">
+          <Link href="/login" className="text-black font-medium hover:underline">
             Back to Sign In
           </Link>
         </div>
@@ -57,22 +57,22 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center">
               <FileText size={20} className="text-white" />
             </div>
-            <span className="font-bold text-2xl text-gray-900">DocFill</span>
+            <span className="font-bold text-2xl text-black">PaperworkSlayer</span>
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Create an account</h1>
-          <p className="text-gray-500 mt-1">Start automating your documents</p>
+          <h1 className="text-2xl font-bold text-black">Create your account</h1>
+          <p className="text-black/50 mt-1">Welcome to PaperworkSlayer</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+        <div className="bg-white rounded-2xl border border-black/10 shadow-sm p-8">
           <form onSubmit={handleSignup} className="space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg p-3">
@@ -81,7 +81,7 @@ export default function SignupPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-black mb-1.5">
                 Email address
               </label>
               <input
@@ -89,13 +89,13 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-2.5 rounded-lg border border-black/20 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all"
                 placeholder="you@example.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-black mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -105,13 +105,13 @@ export default function SignupPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  className="w-full px-4 py-2.5 pr-10 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-2.5 pr-10 rounded-lg border border-black/20 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all"
                   placeholder="Min. 6 characters"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-black/40 hover:text-black"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -121,20 +121,24 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gray-900 text-white py-3 rounded-lg text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
+              className="w-full bg-black text-white py-3 rounded-lg text-sm font-semibold hover:bg-black/80 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
             >
               {isLoading && <Loader2 size={14} className="animate-spin" />}
               Create Account
             </button>
           </form>
 
-          <p className="text-center text-sm text-gray-500 mt-6">
+          <p className="text-center text-sm text-black/50 mt-6">
             Already have an account?{' '}
-            <Link href="/login" className="text-blue-500 font-medium hover:underline">
+            <Link href="/login" className="text-black font-medium hover:underline">
               Sign in
             </Link>
           </p>
         </div>
+
+        <p className="text-center text-xs text-black/30 mt-6">
+          <Link href="/" className="hover:underline">← Back to homepage</Link>
+        </p>
       </div>
     </div>
   );
