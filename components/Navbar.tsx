@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Users, FileText, Zap, LogOut, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
 
 const navItems = [
   { href: '/dashboard/clients', label: 'Clients', icon: Users },
@@ -11,14 +12,18 @@ const navItems = [
   { href: '/dashboard/generate', label: 'Generate', icon: Zap },
 ];
 
-export default function Navbar() {
+export default function Navbar({ email }: { email?: string }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const handleLogout = () => {
-    document.cookie = 'mock_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    router.push('/');
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
   };
+
+  const initial = email ? email[0].toUpperCase() : '?';
 
   return (
     <aside className="w-60 flex-shrink-0 bg-sidebar flex flex-col h-full">
@@ -60,11 +65,10 @@ export default function Navbar() {
       <div className="px-3 py-4 border-t border-white/10">
         <div className="flex items-center gap-3 px-3 py-2 rounded-lg mb-2">
           <div className="w-8 h-8 rounded-full bg-blue-500/30 flex items-center justify-center text-blue-300 text-xs font-bold">
-            D
+            {initial}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white/80 text-sm font-medium truncate">Demo User</p>
-            <p className="text-white/40 text-xs truncate">demo@docfill.app</p>
+            <p className="text-white/40 text-xs truncate">{email ?? ''}</p>
           </div>
         </div>
         <button

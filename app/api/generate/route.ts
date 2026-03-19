@@ -1,20 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTemplate, getDocument, getUploadedFilePath } from '@/lib/store';
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { FieldValue } from '@/lib/types';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface GenerateRequest {
   templateId: string;
-  fieldValues: FieldValue[]; // { fieldName, value } pairs
+  fieldValues: FieldValue[];
   outputFormat?: 'docx' | 'pdf';
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const body = await request.json() as GenerateRequest;
     const { templateId, fieldValues, outputFormat } = body;
 
@@ -22,27 +28,57 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'templateId is required' }, { status: 400 });
     }
 
-    const template = getTemplate(templateId);
-    if (!template) {
+    const admin = createAdminClient();
+
+    // Get template record
+    const { data: tmpl, error: tmplError } = await admin
+      .from('templates')
+      .select('*')
+      .eq('id', templateId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (tmplError || !tmpl) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     }
 
-    const templateFilePath = getUploadedFilePath(templateId);
-    if (!templateFilePath || !fs.existsSync(templateFilePath)) {
+    // Download template file from Storage to a temp file
+    const { data: fileData, error: downloadError } = await admin.storage
+      .from('uploads')
+      .download(tmpl.file_url);
+
+    if (downloadError || !fileData) {
       return NextResponse.json({ error: 'Template file not found' }, { status: 404 });
     }
 
-    const fieldMap = new Map<string, string>();
-    const underlinedFields = new Set<string>();
-    for (const fv of (fieldValues || [])) {
-      fieldMap.set(fv.fieldName, fv.value);
-      if (fv.underlined) underlinedFields.add(fv.fieldName);
-    }
+    const ext = tmpl.file_name.toLowerCase().endsWith('.pdf') ? '.pdf' : '.docx';
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'docfill-'));
+    const tmpFilePath = path.join(tmpDir, `template${ext}`);
 
-    if (template.fileType === 'word') {
-      return await generateWordDocument(templateFilePath, template.fileName, fieldMap, outputFormat);
-    } else {
-      return await generatePdfDocument(templateFilePath, template.fileName, template.fields, fieldMap, underlinedFields);
+    try {
+      const buffer = Buffer.from(await fileData.arrayBuffer());
+      fs.writeFileSync(tmpFilePath, buffer);
+
+      const fieldMap = new Map<string, string>();
+      const underlinedFields = new Set<string>();
+      for (const fv of (fieldValues || [])) {
+        fieldMap.set(fv.fieldName, fv.value);
+        if (fv.underlined) underlinedFields.add(fv.fieldName);
+      }
+
+      const template = {
+        fileType: tmpl.file_type as 'pdf' | 'word',
+        fileName: tmpl.file_name,
+        fields: tmpl.fields ?? [],
+      };
+
+      if (template.fileType === 'word') {
+        return await generateWordDocument(tmpFilePath, template.fileName, fieldMap, outputFormat);
+      } else {
+        return await generatePdfDocument(tmpFilePath, template.fileName, template.fields, fieldMap, underlinedFields);
+      }
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   } catch (err) {
     console.error('Generate error:', err);
@@ -63,17 +99,12 @@ async function generateWordDocument(
   const zip = new PizZip(content);
 
   // Step 1: Direct XML label replacement for "Label :" style fields
-  // (handles docs where fields were detected as label-only, not {{placeholder}} style)
   let xmlContent = zip.files['word/document.xml']?.asText() || '';
   fieldMap.forEach((value, fieldName) => {
-    // Escape special XML chars in the field name
     const xmlLabel = fieldName
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    // Escape special regex chars
     const reLabel = xmlLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // Case 1: label + underscores in the same <w:t> element
-    // e.g. <w:t>Name :___________</w:t> → <w:t>Name : Janet</w:t>
     const sameElemRe = new RegExp(
       `(<w:t[^>]*>)(${reLabel}\\s*:)\\s*_{3,}(</w:t>)`,
       'gi'
@@ -84,9 +115,6 @@ async function generateWordDocument(
       return;
     }
 
-    // Case 2: label in one <w:t>, underscores in a separate <w:r> run in the same paragraph.
-    // Replaces the underscore text with the value and ensures the run has underline formatting,
-    // so the value appears on top of (and styled like) the original blank line.
     const crossRunRe = new RegExp(
       `(${reLabel}\\s*:\\s*</w:t>(?:(?!</w:p>)[\\s\\S])*?)` +
       `(<w:r(?:\\s[^>]*)?>)` +
@@ -113,7 +141,6 @@ async function generateWordDocument(
       return;
     }
 
-    // Fallback: no underscores found — just append value after the colon
     const fallbackRe = new RegExp(
       `(<w:t(?:\\s[^>]*)?>)(${reLabel}\\s*:)\\s*(</w:t>)`,
       'gi'
@@ -139,7 +166,6 @@ async function generateWordDocument(
     doc.render(context);
     docxBuf = doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
   } catch (err) {
-    // No {{}} placeholders — return the label-replaced XML result
     console.warn('Docxtemplater skipped (no placeholders):', err);
     docxBuf = zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
   }
@@ -166,9 +192,7 @@ async function generateWordDocument(
 
 async function convertDocxToPdf(docxBuffer: Buffer): Promise<Buffer> {
   const { execSync } = await import('child_process');
-  const os = await import('os');
 
-  // Try common LibreOffice install locations
   const candidates = [
     '/Applications/LibreOffice.app/Contents/MacOS/soffice',
     '/usr/bin/soffice',
@@ -189,12 +213,10 @@ async function convertDocxToPdf(docxBuffer: Buffer): Promise<Buffer> {
   }
 
   if (!soffice) {
-    throw new Error(
-      'LibreOffice is not installed. Install LibreOffice to export Word templates as PDF.'
-    );
+    throw new Error('LibreOffice is not installed. Install LibreOffice to export Word templates as PDF.');
   }
 
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'docfill-'));
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'docfill-pdf-'));
   const tmpDocx = path.join(tmpDir, 'document.docx');
   const tmpPdf = path.join(tmpDir, 'document.pdf');
 
@@ -233,7 +255,6 @@ async function generatePdfDocument(
     const page = pages[pageIndex];
     const { width: pageWidth, height: pageHeight } = page.getSize();
 
-    // Convert normalized coords to PDF coords (PDF y is from bottom)
     const x = field.rectangle.x * pageWidth;
     const y = (1 - field.rectangle.y - field.rectangle.height) * pageHeight;
     const rectWidth = field.rectangle.width * pageWidth;
@@ -241,16 +262,8 @@ async function generatePdfDocument(
 
     const fontSize = Math.min(12, rectHeight * 0.7);
 
-    // Draw a white background rectangle to cover any placeholder
-    page.drawRectangle({
-      x,
-      y,
-      width: rectWidth,
-      height: rectHeight,
-      color: rgb(1, 1, 1),
-    });
+    page.drawRectangle({ x, y, width: rectWidth, height: rectHeight, color: rgb(1, 1, 1) });
 
-    // Draw the text value
     const textY = y + (rectHeight - fontSize) / 2 + 2;
     page.drawText(value, {
       x: x + 2,
@@ -261,7 +274,6 @@ async function generatePdfDocument(
       maxWidth: rectWidth - 4,
     });
 
-    // Draw underline only if the source value was underlined
     if (underlinedFields.has(field.fieldName)) {
       const textWidth = Math.min(font.widthOfTextAtSize(value, fontSize), rectWidth - 4);
       page.drawLine({

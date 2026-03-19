@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUploadedFilePath, getHtmlContent } from '@/lib/store';
-import fs from 'fs';
-import path from 'path';
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,32 +10,69 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const supabase = createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { id } = params;
+    const admin = createAdminClient();
 
     // Serve HTML sidecar for Word documents
     if (request.nextUrl.searchParams.get('html') === 'true') {
-      const html = getHtmlContent(id);
-      if (!html) return NextResponse.json({ error: 'HTML not found' }, { status: 404 });
+      const htmlPath = `${user.id}/${id}.html`;
+      const { data: htmlData, error } = await admin.storage.from('uploads').download(htmlPath);
+      if (error || !htmlData) return NextResponse.json({ error: 'HTML not found' }, { status: 404 });
+      const html = await htmlData.text();
       return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
 
-    const filePath = getUploadedFilePath(id);
+    // Look up the file_url (storage path) from DB — check both templates and client_documents
+    let storagePath: string | null = null;
+    let fileExt = '';
 
-    if (!filePath || !fs.existsSync(filePath)) {
+    const { data: tmpl } = await admin
+      .from('templates')
+      .select('file_url, file_name')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (tmpl) {
+      storagePath = tmpl.file_url;
+      fileExt = tmpl.file_name.toLowerCase().endsWith('.pdf') ? '.pdf' : '.docx';
+    } else {
+      const { data: doc } = await admin
+        .from('client_documents')
+        .select('file_url, file_name')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (doc) {
+        storagePath = doc.file_url;
+        fileExt = doc.file_name.toLowerCase().endsWith('.pdf') ? '.pdf' : '.docx';
+      }
+    }
+
+    if (!storagePath) return NextResponse.json({ error: 'File not found' }, { status: 404 });
+
+    const { data: fileData, error: downloadError } = await admin.storage
+      .from('uploads')
+      .download(storagePath);
+
+    if (downloadError || !fileData) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    const ext = path.extname(filePath).toLowerCase();
-    const contentType = ext === '.pdf' ? 'application/pdf'
-      : ext === '.docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      : 'application/octet-stream';
+    const contentType = fileExt === '.pdf' ? 'application/pdf'
+      : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
-    const fileBuffer = fs.readFileSync(filePath);
+    const arrayBuffer = await fileData.arrayBuffer();
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(arrayBuffer, {
       headers: {
         'Content-Type': contentType,
-        'Content-Disposition': `inline; filename="${path.basename(filePath)}"`,
+        'Content-Disposition': `inline; filename="${id}${fileExt}"`,
         'Cache-Control': 'private, max-age=3600',
       },
     });

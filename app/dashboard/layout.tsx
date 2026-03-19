@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import Navbar from '@/components/Navbar';
 
-// TODO: Replace with Supabase Auth session check
 export default async function DashboardLayout({
   children,
 }: {
@@ -16,7 +15,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      <Navbar />
+      <Navbar email={session.email} />
       <main className="flex-1 overflow-auto">
         {children}
       </main>
