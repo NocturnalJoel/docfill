@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, FileText, Zap, Users, CheckCircle, ChevronRight } from 'lucide-react';
+import { ArrowRight, FileText, Zap, Users, CheckCircle, ChevronRight, Lock, Shield, Eye, Server } from 'lucide-react';
 
 export default function LandingPage() {
   return (
@@ -18,6 +18,7 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-8 text-sm text-black/60">
             <a href="#features" className="hover:text-black transition-colors">Features</a>
             <a href="#how-it-works" className="hover:text-black transition-colors">How it works</a>
+            <a href="#security" className="hover:text-black transition-colors">Security</a>
           </nav>
           <div className="flex items-center gap-3">
             <Link
@@ -173,6 +174,60 @@ export default function LandingPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Security */}
+      <section id="security" className="py-24 bg-black/[0.02]">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl font-bold text-black mb-3">Your clients&apos; data stays private</h2>
+            <p className="text-black/50 text-lg max-w-2xl mx-auto">
+              PaperworkSlayer is built on enterprise-grade infrastructure used by thousands of businesses worldwide.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 mb-12">
+            {[
+              {
+                icon: Lock,
+                title: 'Encrypted in transit',
+                desc: 'All data sent between you and PaperworkSlayer is protected by TLS encryption — the same standard used by banks.',
+              },
+              {
+                icon: Eye,
+                title: 'Strict data isolation',
+                desc: 'Your documents and client data are invisible to every other user. Row-level security enforces this at the database level — not just the application.',
+              },
+              {
+                icon: Shield,
+                title: 'SOC 2 certified infrastructure',
+                desc: 'Built on Supabase and Vercel — both independently audited and SOC 2 certified. Your data lives in infrastructure that meets enterprise compliance standards.',
+              },
+              {
+                icon: Server,
+                title: 'Private file storage',
+                desc: 'Uploaded documents are stored in a private, access-controlled storage system. Files are never publicly accessible — only you can retrieve them.',
+              },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="flex gap-4 p-6 rounded-2xl border border-black/10 bg-white">
+                <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Icon size={18} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-black mb-1">{title}</h3>
+                  <p className="text-black/50 text-sm leading-relaxed">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border border-black/10 rounded-2xl p-6 bg-white text-center max-w-2xl mx-auto">
+            <p className="text-black/60 text-sm leading-relaxed">
+              PaperworkSlayer does not sell, share, or use your clients&apos; data for any purpose other than providing the service.
+              Your documents are yours — we have no access to their contents.
+            </p>
           </div>
         </div>
       </section>
