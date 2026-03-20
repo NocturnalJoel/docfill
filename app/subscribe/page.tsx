@@ -46,9 +46,7 @@ export default function SubscribePage() {
       <header className="border-b border-black/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-              <FileText size={16} className="text-white" />
-            </div>
+            <img src="/logo.png" alt="PaperworkSlayer" className="w-8 h-8 rounded-lg" />
             <span className="font-bold text-xl text-black">PaperworkSlayer</span>
           </Link>
           <Link href="/login" className="text-sm text-black/50 hover:text-black transition-colors">

@@ -38,9 +38,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center">
-              <FileText size={20} className="text-white" />
-            </div>
+            <img src="/logo.png" alt="PaperworkSlayer" className="w-10 h-10 rounded-xl" />
             <span className="font-bold text-2xl text-black">PaperworkSlayer</span>
           </Link>
           <h1 className="text-2xl font-bold text-black">Welcome back</h1>

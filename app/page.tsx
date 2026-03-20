@@ -10,9 +10,7 @@ export default function LandingPage() {
       <header className="border-b border-black/10 sticky top-0 z-50 bg-white/95 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-              <FileText size={16} className="text-white" />
-            </div>
+            <img src="/logo.png" alt="PaperworkSlayer" className="w-8 h-8 rounded-lg" />
             <span className="font-bold text-xl text-black">PaperworkSlayer</span>
           </div>
           <nav className="hidden md:flex items-center gap-8 text-sm text-black/60">
@@ -254,9 +252,7 @@ export default function LandingPage() {
       <footer className="border-t border-black/10 py-8">
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-black/40">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
-              <FileText size={12} className="text-white" />
-            </div>
+            <img src="/logo.png" alt="PaperworkSlayer" className="w-6 h-6 rounded" />
             <span className="font-semibold text-black">PaperworkSlayer</span>
           </div>
           <p>© 2026 Loophole Media Inc. All rights reserved.</p>

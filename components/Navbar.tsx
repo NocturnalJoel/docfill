@@ -30,9 +30,7 @@ export default function Navbar({ email }: { email?: string }) {
       {/* Logo */}
       <div className="px-6 py-5 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-            <FileText size={16} className="text-white" />
-          </div>
+          <img src="/logo.png" alt="PaperworkSlayer" className="w-8 h-8 rounded-lg" />
           <span className="text-white font-bold text-lg tracking-tight">PaperworkSlayer</span>
         </div>
         <p className="text-white/40 text-xs mt-1">by Loophole Media Inc.</p>

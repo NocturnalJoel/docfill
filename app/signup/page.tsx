@@ -41,9 +41,7 @@ export default function SignupPage() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="w-full max-w-md text-center">
-          <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileText size={28} className="text-white" />
-          </div>
+          <img src="/logo.png" alt="PaperworkSlayer" className="w-16 h-16 rounded-full mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-black mb-2">Check your email</h2>
           <p className="text-black/50 mb-6">
             We sent a confirmation link to <strong className="text-black">{email}</strong>. Click it to activate your account.
@@ -62,9 +60,7 @@ export default function SignupPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center">
-              <FileText size={20} className="text-white" />
-            </div>
+            <img src="/logo.png" alt="PaperworkSlayer" className="w-10 h-10 rounded-xl" />
             <span className="font-bold text-2xl text-black">PaperworkSlayer</span>
           </Link>
           <h1 className="text-2xl font-bold text-black">Create your account</h1>
