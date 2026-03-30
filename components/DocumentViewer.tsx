@@ -768,8 +768,8 @@ function WordDocumentViewer({
         </button>
       </div>
 
-      {/* Document + Overlay */}
-      <div ref={scrollContainerRef} className="relative border border-gray-200 rounded-lg bg-white">
+      {/* Document + Overlay — capped at page width so it doesn't stretch full-screen */}
+      <div ref={scrollContainerRef} className="relative border border-gray-200 rounded-lg bg-white max-w-[680px] mx-auto">
         {/* Rendered HTML */}
         <div
           ref={containerRef}

@@ -153,6 +153,40 @@ async function generateWordDocument(
     );
     xmlContent = xmlContent.replace(fallbackRe, `$1$2 ${value}$3`);
   });
+  // Step 1b: Paragraph-level fallback for labels split across multiple <w:r> runs.
+  // Concatenate all <w:t> text in each paragraph; if it matches "FieldName:" (with optional
+  // trailing underscores), append the value as a new run. This handles the common Word XML
+  // pattern where "First Name:" is stored in separate runs and the per-element regex above missed it.
+  {
+    // Deduplicate fieldMap keys (it has both "Name" and "name") — use one entry per field
+    const seenNorm2 = new Set<string>();
+    const uniqueEntries: Array<[string, string]> = [];
+    for (const [k, v] of fieldMap.entries()) {
+      const norm = k.toLowerCase();
+      if (!seenNorm2.has(norm)) { seenNorm2.add(norm); uniqueEntries.push([k, v]); }
+    }
+
+    xmlContent = xmlContent.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, (para) => {
+      // Concatenate all <w:t> text content within this paragraph
+      const paraText: string[] = [];
+      const tRe = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+      let tm: RegExpExecArray | null;
+      while ((tm = tRe.exec(para)) !== null) {
+        paraText.push(tm[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
+      }
+      const fullText = paraText.join('').trim();
+      if (!fullText) return para;
+
+      for (const [fieldName, value] of uniqueEntries) {
+        const esc = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Match "FieldName:" or "FieldName: ___..." — must have colon, trailing underscores OK
+        if (new RegExp(`^${esc}\\s*:\\s*_*\\s*$`, 'i').test(fullText)) {
+          return para.replace(/<\/w:p>/, `<w:r><w:t xml:space="preserve"> ${value}</w:t></w:r></w:p>`);
+        }
+      }
+      return para;
+    });
+  }
   zip.file('word/document.xml', xmlContent);
 
   // Step 2: docxtemplater for {{placeholder}} style fields
