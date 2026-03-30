@@ -180,104 +180,126 @@ export interface PdfTextItem {
 
 export function detectPdfClientFields(items: PdfTextItem[]): DetectedField[] {
   const fields: DetectedField[] = [];
-  let colorIndex = 0;
 
-  // Group items by page
   const byPage = new Map<number, PdfTextItem[]>();
   for (const item of items) {
     if (!byPage.has(item.pageNumber)) byPage.set(item.pageNumber, []);
     byPage.get(item.pageNumber)!.push(item);
   }
 
-  byPage.forEach((pageItems) => {
-    // Sort by y then x (top-to-bottom, left-to-right)
-    const sorted = [...pageItems].sort((a, b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
+  byPage.forEach((pageItems, pageNumber) => {
+    const handledIds = new Set<number>();
 
-    // Group into rows (items with similar y values)
-    const rows: PdfTextItem[][] = [];
-    let currentRow: PdfTextItem[] = [];
-    let lastY = -1;
-    const rowTolerance = 0.015;
+    // --- Pass 1: items that embed both label and value in one chunk ("Label: value") ---
+    for (let i = 0; i < pageItems.length; i++) {
+      const item = pageItems[i];
+      const text = item.str.trim();
+      const colonIdx = text.indexOf(':');
+      if (colonIdx <= 1 || colonIdx >= text.length - 1) continue;
 
-    for (const item of sorted) {
-      if (lastY === -1 || Math.abs(item.y - lastY) < rowTolerance) {
-        currentRow.push(item);
-        lastY = item.y;
+      const beforeColon = text.slice(0, colonIdx).trim();
+      const afterColon = text.slice(colonIdx + 1).trim();
+      if (!isLabelText(beforeColon) || !afterColon || afterColon.length > 200) continue;
+
+      // Estimate value position as the right portion of this item
+      const splitRatio = (colonIdx + 1) / text.length;
+      const valueX = item.x + item.width * splitRatio;
+      const valueW = item.width * (1 - splitRatio);
+
+      fields.push({
+        id: uuidv4(),
+        fieldName: beforeColon,
+        value: afterColon,
+        rectangle: {
+          x: Math.max(0, valueX - 0.005),
+          y: Math.max(0, item.y - 0.003),
+          width: Math.max(0.04, valueW + 0.01),
+          height: Math.max(0.022, item.height + 0.008),
+          pageNumber,
+        },
+        color: getFieldColor(fields.length),
+        confirmed: false,
+      });
+      handledIds.add(i);
+    }
+
+    // --- Pass 2: standalone labels ("Full Name:") matched to nearby value items ---
+    // Collect standalone label items and all non-label items
+    const labelItems: Array<{ item: PdfTextItem; idx: number }> = [];
+    const valuePool: PdfTextItem[] = [];
+
+    for (let i = 0; i < pageItems.length; i++) {
+      if (handledIds.has(i)) continue;
+      const item = pageItems[i];
+      const text = item.str.trim();
+      if (!text) continue;
+
+      if (text.endsWith(':') && isLabelText(text.slice(0, -1).trim())) {
+        labelItems.push({ item, idx: i });
       } else {
-        if (currentRow.length > 0) rows.push(currentRow);
-        currentRow = [item];
-        lastY = item.y;
+        valuePool.push(item);
       }
     }
-    if (currentRow.length > 0) rows.push(currentRow);
 
-    // Detect label: value patterns within rows
-    for (const row of rows) {
-      if (row.length === 0) continue;
+    // For each label, find value items to its right within vertical proximity
+    for (const { item: label } of labelItems) {
+      const labelName = label.str.trim().slice(0, -1).trim(); // remove trailing ':'
+      const labelRight = label.x + label.width;
+      // Vertical tolerance: generous to handle slight cell-padding offsets
+      const yTol = Math.max(0.025, label.height * 2.5);
 
-      const rowText = row.map((r) => r.str).join(' ');
+      // Find x-start of the next label to the right (so we don't grab its value)
+      const nextLabelX = labelItems
+        .filter(({ item: l }) =>
+          l !== label &&
+          l.x > labelRight + 0.01 &&
+          Math.abs(l.y - label.y) < yTol
+        )
+        .reduce((min, { item: l }) => Math.min(min, l.x), 1.0);
 
-      // Pattern: "Label: Value" or "Label : Value"
-      const colonMatch = rowText.match(/^([A-Za-z][A-Za-z\s/()]{1,30})\s*:\s+(.+)$/);
-      if (colonMatch) {
-        const fieldName = colonMatch[1].trim();
-        const value = colonMatch[2].trim();
-        if (value.length > 0 && value.length < 200 && fieldName.length > 1) {
-          const firstItem = row[0];
-          fields.push({
-            id: uuidv4(),
-            fieldName,
-            value,
-            rectangle: {
-              x: firstItem.x,
-              y: firstItem.y,
-              width: Math.min(0.7, row.reduce((acc, r) => Math.max(acc, r.x + r.width), 0) - firstItem.x + 0.05),
-              height: Math.max(0.025, firstItem.height + 0.01),
-              pageNumber: firstItem.pageNumber,
-            },
-            color: getFieldColor(colorIndex++),
-            confirmed: false,
-          });
-          continue;
-        }
-      }
+      const valueItems = valuePool
+        .filter((v) =>
+          v.x >= labelRight - 0.01 &&
+          v.x < nextLabelX - 0.005 &&
+          Math.abs(v.y - label.y) < yTol
+        )
+        .sort((a, b) => a.x - b.x);
 
-      // Pattern: two adjacent items where first looks like a label (ends with colon or is title-case)
-      if (row.length >= 2) {
-        const labelItem = row[0];
-        const valueItems = row.slice(1);
-        const labelText = labelItem.str.trim();
-        const valueText = valueItems.map((v) => v.str).join(' ').trim();
+      if (valueItems.length === 0) continue;
+      const value = valueItems.map((v) => v.str).join(' ').trim();
+      if (!value || value.length > 200) continue;
 
-        if (
-          (labelText.endsWith(':') || /^[A-Z][a-z]/.test(labelText)) &&
-          labelText.length < 35 &&
-          valueText.length > 0 &&
-          valueText.length < 200
-        ) {
-          const fieldName = labelText.replace(/:$/, '').trim();
-          if (fieldName.length > 1) {
-            fields.push({
-              id: uuidv4(),
-              fieldName,
-              value: valueText,
-              rectangle: {
-                x: labelItem.x,
-                y: labelItem.y,
-                width: Math.min(0.7, valueItems.reduce((acc, r) => Math.max(acc, r.x + r.width), 0) - labelItem.x + 0.02),
-                height: Math.max(0.025, labelItem.height + 0.01),
-                pageNumber: labelItem.pageNumber,
-              },
-              color: getFieldColor(colorIndex++),
-              confirmed: false,
-            });
-          }
-        }
-      }
+      const minX = valueItems[0].x;
+      const maxX = valueItems.reduce((acc, v) => Math.max(acc, v.x + v.width), 0);
+      const minY = valueItems.reduce((acc, v) => Math.min(acc, v.y), Infinity);
+      const maxH = valueItems.reduce((acc, v) => Math.max(acc, v.height), 0);
+
+      fields.push({
+        id: uuidv4(),
+        fieldName: labelName,
+        value,
+        rectangle: {
+          x: Math.max(0, minX - 0.005),
+          y: Math.max(0, minY - 0.003),
+          width: Math.max(0.04, Math.min(0.95, maxX - minX + 0.01)),
+          height: Math.max(0.022, maxH + 0.008),
+          pageNumber,
+        },
+        color: getFieldColor(fields.length),
+        confirmed: false,
+      });
     }
   });
 
   return fields;
+}
+
+function isLabelText(text: string): boolean {
+  return (
+    text.length >= 2 &&
+    text.length <= 40 &&
+    /^[A-Za-z][A-Za-z\s/().#&-]*$/.test(text)
+  );
 }
 
 // Common form field labels that strongly indicate a template field

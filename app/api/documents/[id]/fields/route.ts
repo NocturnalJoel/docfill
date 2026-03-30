@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { DetectedField } from '@/lib/types';
+import { isDevRequest } from '@/lib/dev';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,12 +13,21 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    const body = await request.json();
+    const { fields, pageCount } = body as { fields: DetectedField[]; pageCount?: number };
+
+    if (isDevRequest(request)) {
+      const store = await import('@/lib/store');
+      const updates: Record<string, unknown> = { fields };
+      if (pageCount !== undefined) updates.pageCount = pageCount;
+      const document = store.updateDocument(id, updates as Parameters<typeof store.updateDocument>[1]);
+      if (!document) return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+      return NextResponse.json({ document });
+    }
+
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const body = await request.json();
-    const { fields, pageCount } = body as { fields: DetectedField[]; pageCount?: number };
 
     const admin = createAdminClient();
     const updateData: Record<string, unknown> = { fields };

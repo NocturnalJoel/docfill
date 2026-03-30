@@ -11,8 +11,8 @@ import { getFieldColor, hexToRgba } from '@/lib/utils';
 import { detectPdfClientFields, detectPdfTemplateFields, PdfTextItem } from '@/lib/document-parser';
 import FieldRectangle from './FieldRectangle';
 
-// Configure PDF.js worker — served locally to avoid CDN round-trip
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+// Use the worker that matches react-pdf's bundled pdfjs-dist version exactly
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface DocumentViewerProps {
   fileUrl: string;
@@ -22,6 +22,8 @@ interface DocumentViewerProps {
   onFieldsChange: (fields: DetectedField[] | TemplateField[]) => void;
   onSave: (fields: DetectedField[] | TemplateField[], pageCount: number) => Promise<void>;
   mode: 'client' | 'template';
+  hideSave?: boolean;
+  onContainerSize?: (width: number, height: number) => void;
 }
 
 const PAGE_WIDTH = 680;
@@ -34,6 +36,8 @@ export default function DocumentViewer({
   onFieldsChange,
   onSave,
   mode,
+  hideSave = false,
+  onContainerSize,
 }: DocumentViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageDimensions, setPageDimensions] = useState<Array<{ width: number; height: number }>>([]);
@@ -280,8 +284,8 @@ export default function DocumentViewer({
       const h = Math.abs(endY - drawState.startY);
 
       if (w > 10 && h > 10) {
-        const dims = pageDimensions[pageNumber - 1];
-        if (dims) {
+        const dims = pageDimensions[pageNumber - 1] ?? { width: rect.width, height: rect.height };
+        if (dims.width > 0 && dims.height > 0) {
           const newField = createNewField(
             fields.length,
             x / dims.width,
@@ -344,6 +348,7 @@ export default function DocumentViewer({
         onLabelChange={handleLabelChange}
         onValueChange={mode === 'client' ? handleValueChange : undefined}
         onAutoDetect={onFieldsChange}
+        onContainerSizeChange={(w, h) => { setPageDimensions([{ width: w, height: h }]); onContainerSize?.(w, h); }}
         mode={mode}
         isAddingField={isAddingField}
         setIsAddingField={setIsAddingField}
@@ -357,6 +362,7 @@ export default function DocumentViewer({
         unconfirmedCount={unconfirmedCount}
         confirmAll={confirmAll}
         error={error}
+        hideSave={hideSave}
       />
     );
   }
@@ -398,14 +404,16 @@ export default function DocumentViewer({
           {isAddingField ? 'Draw rectangle...' : 'Add Field'}
         </button>
         <div className="flex-1" />
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50"
-        >
-          {isSaving ? <Loader2 size={12} className="animate-spin" /> : saveSuccess ? <Check size={12} /> : <Save size={12} />}
-          {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save Fields'}
-        </button>
+        {!hideSave && (
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50"
+          >
+            {isSaving ? <Loader2 size={12} className="animate-spin" /> : saveSuccess ? <Check size={12} /> : <Save size={12} />}
+            {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save Fields'}
+          </button>
+        )}
       </div>
 
       {/* PDF Document */}
@@ -522,6 +530,7 @@ interface WordViewerProps {
   onLabelChange: (id: string, newName: string) => void;
   onValueChange?: (id: string, newValue: string) => void;
   onAutoDetect: (fields: DetectedField[] | TemplateField[]) => void;
+  onContainerSizeChange: (width: number, height: number) => void;
   mode: 'client' | 'template';
   isAddingField: boolean;
   setIsAddingField: (v: boolean) => void;
@@ -535,6 +544,7 @@ interface WordViewerProps {
   unconfirmedCount: number;
   confirmAll: () => void;
   error: string | null;
+  hideSave?: boolean;
 }
 
 function WordDocumentViewer({
@@ -547,6 +557,7 @@ function WordDocumentViewer({
   onLabelChange,
   onValueChange,
   onAutoDetect,
+  onContainerSizeChange,
   mode,
   isAddingField,
   setIsAddingField,
@@ -560,8 +571,11 @@ function WordDocumentViewer({
   unconfirmedCount,
   confirmAll,
   error,
+  hideSave = false,
 }: WordViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 680, height: 900 });
 
   // Refs so the ResizeObserver callback always has fresh values without re-registering
@@ -703,13 +717,30 @@ function WordDocumentViewer({
     const el = containerRef.current;
     if (!el) return;
     const observer = new ResizeObserver(() => {
-      setContainerSize({ width: el.offsetWidth, height: el.offsetHeight });
+      const w = el.offsetWidth, h = el.offsetHeight;
+      setContainerSize({ width: w, height: h });
+      onContainerSizeChange(w, h);
       runDetection(el);
     });
     observer.observe(el);
-    setContainerSize({ width: el.offsetWidth, height: el.offsetHeight });
+    const w0 = el.offsetWidth, h0 = el.offsetHeight;
+    setContainerSize({ width: w0, height: h0 });
+    onContainerSizeChange(w0, h0);
     return () => observer.disconnect();
   }, [runDetection]);
+
+  // Non-passive wheel listener on overlay so scroll works while in draw mode
+  useEffect(() => {
+    const overlay = overlayRef.current;
+    const scroller = scrollContainerRef.current;
+    if (!overlay || !scroller) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      scroller.scrollTop += e.deltaY;
+    };
+    overlay.addEventListener('wheel', handler, { passive: false });
+    return () => overlay.removeEventListener('wheel', handler);
+  }, []);
 
   // Also trigger when html changes — ResizeObserver won't fire if height stays the same
   // (e.g. short docs that stay within min-h-[600px])
@@ -754,18 +785,20 @@ function WordDocumentViewer({
           {isAddingField ? 'Draw rectangle...' : 'Add Field'}
         </button>
         <div className="flex-1" />
-        <button
-          onClick={onSave}
-          disabled={isSaving}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50"
-        >
-          {isSaving ? <Loader2 size={12} className="animate-spin" /> : saveSuccess ? <Check size={12} /> : <Save size={12} />}
-          {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save Fields'}
-        </button>
+        {!hideSave && (
+          <button
+            onClick={onSave}
+            disabled={isSaving}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50"
+          >
+            {isSaving ? <Loader2 size={12} className="animate-spin" /> : saveSuccess ? <Check size={12} /> : <Save size={12} />}
+            {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save Fields'}
+          </button>
+        )}
       </div>
 
       {/* Document + Overlay */}
-      <div className="relative border border-gray-200 rounded-lg overflow-auto bg-white" style={{ maxHeight: '70vh' }}>
+      <div ref={scrollContainerRef} className="relative border border-gray-200 rounded-lg overflow-auto bg-white" style={{ maxHeight: '70vh' }}>
         {/* Rendered HTML */}
         <div
           ref={containerRef}
@@ -774,10 +807,11 @@ function WordDocumentViewer({
           style={{ fontFamily: 'Georgia, serif', fontSize: '14px', lineHeight: 1.6 }}
         />
 
-        {/* Overlay */}
+        {/* Overlay — explicit height so it covers full content, not just the clipped 70vh */}
         <div
-          className="absolute inset-0"
-          style={{ cursor: isAddingField ? 'crosshair' : 'default', pointerEvents: isAddingField ? 'auto' : 'none' }}
+          ref={overlayRef}
+          className="absolute top-0 left-0 w-full"
+          style={{ height: containerSize.height, cursor: isAddingField ? 'crosshair' : 'default', pointerEvents: isAddingField ? 'auto' : 'none' }}
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
           onMouseUp={onMouseUp}
@@ -796,8 +830,8 @@ function WordDocumentViewer({
         </div>
 
         {/* Field rectangles (always visible, not blocked by overlay) */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="relative w-full h-full pointer-events-auto" style={{ pointerEvents: isAddingField ? 'none' : 'auto' }}>
+        <div className="absolute top-0 left-0 w-full pointer-events-none" style={{ height: containerSize.height }}>
+          <div className="relative w-full h-full" style={{ pointerEvents: isAddingField ? 'none' : 'auto' }}>
             {(fields as Array<DetectedField | TemplateField>).map((field) => {
               const r = field.rectangle;
               return (
