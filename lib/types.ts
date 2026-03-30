@@ -41,6 +41,7 @@ export interface TemplateField {
   placeholder: string;
   rectangle: Rectangle;
   color: string;
+  confirmed?: boolean;
 }
 
 export interface Template {

@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  FileText, File, Trash2, Edit3, Loader2, AlertCircle, X, Check
+  FileText, File, Trash2, Edit3, Loader2, AlertCircle, X, Check, Plus,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import UploadDropzone from '@/components/UploadDropzone';
 import { Template, TemplateField } from '@/lib/types';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getFieldColor } from '@/lib/utils';
+import { v4 as uuidv4 } from 'uuid';
 
 const DocumentViewer = dynamic(() => import('@/components/DocumentViewer'), {
   ssr: false,
@@ -27,6 +28,8 @@ export default function TemplatesPage() {
   const [newName, setNewName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [currentFields, setCurrentFields] = useState<TemplateField[]>([]);
+  const [localFields, setLocalFields] = useState<TemplateField[]>([]);
+  const [dirtyFieldIds, setDirtyFieldIds] = useState<Set<string>>(new Set());
   const [wordHtml, setWordHtml] = useState<string | undefined>(undefined);
 
   const selectedTemplate = templates.find((t) => t.id === selectedId) || null;
@@ -47,8 +50,13 @@ export default function TemplatesPage() {
   };
 
   useEffect(() => {
-    if (!selectedTemplate) { setCurrentFields([]); setWordHtml(undefined); return; }
-    setCurrentFields(selectedTemplate.fields || []);
+    if (!selectedTemplate) {
+      setCurrentFields([]); setLocalFields([]); setDirtyFieldIds(new Set()); setWordHtml(undefined); return;
+    }
+    const fields = selectedTemplate.fields || [];
+    setCurrentFields(fields);
+    setLocalFields(fields);
+    setDirtyFieldIds(new Set());
     setNewName(selectedTemplate.name);
     if (selectedTemplate.fileType === 'word') {
       setWordHtml(undefined);
@@ -110,6 +118,19 @@ export default function TemplatesPage() {
     }
   };
 
+  const saveFields = async (fields: TemplateField[]) => {
+    if (!selectedId || !selectedTemplate) return;
+    const res = await fetch(`/api/templates/${selectedId}/fields`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields, pageCount: selectedTemplate.pageCount ?? 1 }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setTemplates((prev) => prev.map((t) => t.id === data.template.id ? data.template : t));
+    }
+  };
+
   const handleSaveFields = useCallback(
     async (fields: TemplateField[] | unknown, pageCount: number) => {
       if (!selectedId) return;
@@ -120,15 +141,53 @@ export default function TemplatesPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      const updated = data.template as Template;
-      setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      setTemplates((prev) => prev.map((t) => (t.id === data.template.id ? data.template : t)));
     },
     [selectedId]
   );
 
   const handleFieldsChange = useCallback((fields: TemplateField[] | unknown) => {
-    setCurrentFields(fields as TemplateField[]);
+    const f = fields as TemplateField[];
+    setCurrentFields(f);
+    setLocalFields(f);
   }, []);
+
+  const handleFieldEdit = (id: string, val: string) => {
+    const update = (f: TemplateField) => f.id === id ? { ...f, fieldName: val, confirmed: false } : f;
+    setLocalFields((prev) => prev.map(update));
+    setCurrentFields((prev) => prev.map(update));
+    setDirtyFieldIds((prev) => new Set(prev).add(id));
+  };
+
+  const handleConfirmField = async (id: string) => {
+    const updated = localFields.map((f) => f.id === id ? { ...f, confirmed: true } : f);
+    setLocalFields(updated);
+    setCurrentFields(updated);
+    setDirtyFieldIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+    await saveFields(updated);
+  };
+
+  const handleDeleteField = async (id: string) => {
+    const updated = localFields.filter((f) => f.id !== id);
+    setLocalFields(updated);
+    setCurrentFields(updated);
+    setDirtyFieldIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+    await saveFields(updated);
+  };
+
+  const handleAddField = () => {
+    const newField: TemplateField = {
+      id: uuidv4(),
+      fieldName: '',
+      placeholder: '',
+      color: getFieldColor(localFields.length),
+      rectangle: { x: 0, y: 0, width: 0, height: 0, pageNumber: 1 },
+      confirmed: false,
+    };
+    setLocalFields((prev) => [...prev, newField]);
+    setCurrentFields((prev) => [...prev, newField]);
+    setDirtyFieldIds((prev) => new Set(prev).add(newField.id));
+  };
 
   return (
     <div className="flex h-full">
@@ -229,7 +288,7 @@ export default function TemplatesPage() {
                     <h2 className="text-xl font-bold text-black">{selectedTemplate.name}</h2>
                   )}
                   <div className="text-xs text-black/30 mt-0.5">
-                    {selectedTemplate.fileName} • {selectedTemplate.fields.length} template fields • {formatDate(selectedTemplate.uploadedAt)}
+                    {selectedTemplate.fileName} • {localFields.length} fields • {formatDate(selectedTemplate.uploadedAt)}
                   </div>
                 </div>
               </div>
@@ -261,32 +320,64 @@ export default function TemplatesPage() {
             />
 
             {/* Template fields list */}
-            {currentFields.length > 0 && (
-              <div>
-                <h3 className="font-semibold text-black text-sm mb-3">
-                  Template Fields ({currentFields.length})
-                </h3>
-                <div className="bg-black/[0.02] rounded-xl border border-black/10 overflow-hidden">
-                  <div className="grid grid-cols-3 gap-0 bg-black/[0.04] px-4 py-2 text-xs font-semibold text-black/40 uppercase tracking-wide">
-                    <span>Field Name</span>
-                    <span>Placeholder</span>
-                    <span>Page</span>
-                  </div>
-                  <div className="divide-y divide-black/5">
-                    {currentFields.map((field) => (
-                      <div key={field.id} className="grid grid-cols-3 gap-0 px-4 py-2.5 items-center">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: field.color }} />
-                          <span className="text-xs font-medium text-black/70 truncate">{field.fieldName}</span>
+            <div>
+              <h3 className="font-bold text-black mb-1">Template fields</h3>
+              <p className="text-sm text-black/40 mb-4">Verify field names. Click Confirm to save a field.</p>
+
+              <div className="rounded-xl border border-black/10 overflow-hidden">
+                <div className="grid grid-cols-[1fr_auto_auto] text-xs font-semibold text-black/40 px-4 py-2 border-b border-black/5 bg-black/[0.02]">
+                  <span>Field name</span>
+                  <span />
+                  <span />
+                </div>
+                <div className="divide-y divide-black/5">
+                  {localFields.length === 0 && (
+                    <p className="px-4 py-4 text-sm text-black/30 italic">No fields detected — add them manually below.</p>
+                  )}
+                  {localFields.map((field) => {
+                    const isDirty = dirtyFieldIds.has(field.id);
+                    return (
+                      <div key={field.id} className="grid grid-cols-[1fr_auto_auto] gap-2 px-4 py-2 items-center">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: field.color }} />
+                          <input
+                            className="text-sm text-black/70 font-medium bg-transparent border-b border-transparent hover:border-black/20 focus:border-black focus:outline-none py-0.5 w-full min-w-0"
+                            value={field.fieldName}
+                            placeholder="Field name"
+                            onChange={(e) => handleFieldEdit(field.id, e.target.value)}
+                          />
                         </div>
-                        <span className="text-xs text-black/30 font-mono truncate">{field.placeholder}</span>
-                        <span className="text-xs text-black/30">Page {field.rectangle.pageNumber}</span>
+                        {field.confirmed && !isDirty ? (
+                          <span className="flex items-center gap-1 text-[11px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                            <Check size={10} /> Confirmed
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleConfirmField(field.id)}
+                            className="flex items-center gap-1 text-[11px] font-medium text-amber-600 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-full whitespace-nowrap transition-colors"
+                          >
+                            <Check size={10} /> Confirm
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteField(field.id)}
+                          className="text-black/20 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
-            )}
+
+              <button
+                onClick={handleAddField}
+                className="flex items-center gap-1.5 text-sm text-black/40 hover:text-black transition-colors mt-3"
+              >
+                <Plus size={14} /> Add field
+              </button>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-12">
