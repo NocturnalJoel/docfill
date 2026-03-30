@@ -325,26 +325,22 @@ export default function DocumentViewer({
   // ─── Render ──────────────────────────────────────────────────────────────
 
   const confirmAll = async () => {
-    if (mode === 'client') {
-      const confirmed = (fields as DetectedField[]).map((f) => ({ ...f, confirmed: true }));
-      onFieldsChange(confirmed);
-      setIsSaving(true);
-      setSaveSuccess(false);
-      try {
-        await onSave(confirmed, numPages || 1);
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 2000);
-      } catch {
-        setError('Failed to save');
-      } finally {
-        setIsSaving(false);
-      }
+    const confirmed = (fields as Array<DetectedField | TemplateField>).map((f) => ({ ...f, confirmed: true }));
+    onFieldsChange(confirmed as DetectedField[] | TemplateField[]);
+    setIsSaving(true);
+    setSaveSuccess(false);
+    try {
+      await onSave(confirmed as DetectedField[] | TemplateField[], numPages || 1);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch {
+      setError('Failed to save');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const unconfirmedCount = mode === 'client'
-    ? (fields as DetectedField[]).filter((f) => !f.confirmed).length
-    : 0;
+  const unconfirmedCount = (fields as Array<{ confirmed?: boolean }>).filter((f) => !f.confirmed).length;
 
   if (fileType === 'word') {
     return (
@@ -418,8 +414,7 @@ export default function DocumentViewer({
       {/* PDF Document */}
       <div
         ref={containerRef}
-        className="border border-gray-200 rounded-lg overflow-auto bg-gray-100"
-        style={{ maxHeight: '70vh' }}
+        className="border border-gray-200 rounded-lg overflow-x-auto bg-gray-100"
       >
         <Document
           file={fileUrl}
@@ -728,18 +723,6 @@ function WordDocumentViewer({
     return () => observer.disconnect();
   }, [runDetection]);
 
-  // Non-passive wheel listener on overlay so scroll works while in draw mode
-  useEffect(() => {
-    const overlay = overlayRef.current;
-    const scroller = scrollContainerRef.current;
-    if (!overlay || !scroller) return;
-    const handler = (e: WheelEvent) => {
-      e.preventDefault();
-      scroller.scrollTop += e.deltaY;
-    };
-    overlay.addEventListener('wheel', handler, { passive: false });
-    return () => overlay.removeEventListener('wheel', handler);
-  }, []);
 
   // Also trigger when html changes — ResizeObserver won't fire if height stays the same
   // (e.g. short docs that stay within min-h-[600px])
@@ -786,7 +769,7 @@ function WordDocumentViewer({
       </div>
 
       {/* Document + Overlay */}
-      <div ref={scrollContainerRef} className="relative border border-gray-200 rounded-lg overflow-auto bg-white" style={{ maxHeight: '70vh' }}>
+      <div ref={scrollContainerRef} className="relative border border-gray-200 rounded-lg bg-white">
         {/* Rendered HTML */}
         <div
           ref={containerRef}

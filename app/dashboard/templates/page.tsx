@@ -175,6 +175,14 @@ export default function TemplatesPage() {
     await saveFields(updated);
   };
 
+  const handleConfirmAll = async () => {
+    const updated = localFields.map((f) => ({ ...f, confirmed: true }));
+    setLocalFields(updated);
+    setCurrentFields(updated);
+    setDirtyFieldIds(new Set());
+    await saveFields(updated);
+  };
+
   const handleAddField = () => {
     const newField: TemplateField = {
       id: uuidv4(),
@@ -321,7 +329,18 @@ export default function TemplatesPage() {
 
             {/* Template fields list */}
             <div>
-              <h3 className="font-bold text-black mb-1">Template fields</h3>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-bold text-black">Template fields</h3>
+                {localFields.some((f) => !f.confirmed || dirtyFieldIds.has(f.id)) && (
+                  <button
+                    onClick={handleConfirmAll}
+                    className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-200 transition-colors"
+                  >
+                    <Check size={12} />
+                    Confirm All ({localFields.filter((f) => !f.confirmed || dirtyFieldIds.has(f.id)).length})
+                  </button>
+                )}
+              </div>
               <p className="text-sm text-black/40 mb-4">Verify field names. Click Confirm to save a field.</p>
 
               <div className="rounded-xl border border-black/10 overflow-hidden">

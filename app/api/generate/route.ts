@@ -59,11 +59,17 @@ export async function POST(request: NextRequest) {
       const buffer = Buffer.from(await fileData.arrayBuffer());
       fs.writeFileSync(tmpFilePath, buffer);
 
+      // Build fieldMap with both original and normalized keys for case-insensitive matching
       const fieldMap = new Map<string, string>();
       const underlinedFields = new Set<string>();
       for (const fv of (fieldValues || [])) {
-        fieldMap.set(fv.fieldName, fv.value);
-        if (fv.underlined) underlinedFields.add(fv.fieldName);
+        if (!fv.fieldName?.trim() || !fv.value?.trim()) continue;
+        fieldMap.set(fv.fieldName.trim(), fv.value);
+        fieldMap.set(fv.fieldName.trim().toLowerCase(), fv.value);
+        if (fv.underlined) {
+          underlinedFields.add(fv.fieldName.trim());
+          underlinedFields.add(fv.fieldName.trim().toLowerCase());
+        }
       }
 
       const template = {
@@ -246,7 +252,7 @@ async function generatePdfDocument(
   const pages = pdfDoc.getPages();
 
   for (const field of fields) {
-    const value = fieldMap.get(field.fieldName);
+    const value = fieldMap.get(field.fieldName.trim()) ?? fieldMap.get(field.fieldName.trim().toLowerCase());
     if (!value) continue;
 
     const pageIndex = field.rectangle.pageNumber - 1;
