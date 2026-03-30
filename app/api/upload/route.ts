@@ -4,20 +4,13 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { parseWordDocument } from '@/lib/document-parser';
 import { ClientDocument, Template } from '@/lib/types';
+import { isDevRequest } from '@/lib/dev';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const admin = createAdminClient();
-
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const uploadType = (formData.get('uploadType') as string) || 'document';
@@ -38,9 +31,79 @@ export async function POST(request: NextRequest) {
 
     const fileType = ext === '.pdf' ? 'pdf' : 'word';
     const id = uuidv4();
-
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    const fileUrl = `/api/files/${id}`;
+
+    if (isDevRequest(request)) {
+      const store = await import('@/lib/store');
+
+      if (uploadType === 'template') {
+        let fields: Template['fields'] = [];
+        let pageCount = 1;
+        let wordHtml: string | undefined;
+
+        if (fileType === 'word') {
+          const parsed = await parseWordDocument(buffer);
+          fields = parsed.templateFields;
+          pageCount = parsed.pageCount;
+          wordHtml = parsed.html;
+          store.saveHtmlFile(id, parsed.html);
+        }
+
+        store.saveUploadedFile(id, buffer, ext);
+        const template: Template = {
+          id,
+          name: fileName.replace(/\.[^/.]+$/, ''),
+          fileName,
+          fileType,
+          fileUrl,
+          uploadedAt: new Date().toISOString(),
+          fields,
+          pageCount,
+        };
+        store.createTemplate(template);
+        return NextResponse.json({ template, wordHtml });
+      } else {
+        if (!clientId) {
+          return NextResponse.json({ error: 'clientId is required for document uploads' }, { status: 400 });
+        }
+
+        let fields: ClientDocument['fields'] = [];
+        let pageCount = 1;
+        let wordHtml: string | undefined;
+
+        if (fileType === 'word') {
+          const parsed = await parseWordDocument(buffer);
+          fields = parsed.fields;
+          pageCount = parsed.pageCount;
+          wordHtml = parsed.html;
+          store.saveHtmlFile(id, parsed.html);
+        }
+
+        store.saveUploadedFile(id, buffer, ext);
+        const doc: ClientDocument = {
+          id,
+          clientId,
+          fileName,
+          fileType,
+          fileUrl,
+          uploadedAt: new Date().toISOString(),
+          fields,
+          pageCount,
+        };
+        store.createDocument(doc);
+        return NextResponse.json({ document: doc, wordHtml });
+      }
+    }
+
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const admin = createAdminClient();
 
     // Upload file to Supabase Storage
     const storagePath = `${user.id}/${id}${ext}`;
@@ -55,8 +118,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File upload failed', details: uploadError.message }, { status: 500 });
     }
 
-    const fileUrl = `/api/files/${id}`;
-
     if (uploadType === 'template') {
       let fields: Template['fields'] = [];
       let pageCount = 1;
@@ -68,7 +129,6 @@ export async function POST(request: NextRequest) {
         pageCount = parsed.pageCount;
         wordHtml = parsed.html;
 
-        // Store HTML sidecar in Storage
         await admin.storage
           .from('uploads')
           .upload(`${user.id}/${id}.html`, Buffer.from(parsed.html, 'utf-8'), {

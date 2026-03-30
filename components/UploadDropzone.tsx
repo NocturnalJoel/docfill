@@ -61,21 +61,21 @@ export default function UploadDropzone({
         className={cn(
           'flex flex-col items-center justify-center gap-2 p-6 rounded-lg border-2 border-dashed cursor-pointer transition-colors',
           isDragging
-            ? 'border-blue-400 bg-blue-50'
-            : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50',
+            ? 'border-black bg-black/5'
+            : 'border-black/20 bg-black/[0.02] hover:border-black/50 hover:bg-black/[0.04]',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
         onDragOver={(e) => { e.preventDefault(); if (!disabled) setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
       >
-        <div className="flex items-center gap-2 text-gray-500">
+        <div className="flex items-center gap-2 text-black/40">
           <Upload size={20} />
           <FileText size={18} className="text-red-400" />
           <File size={18} className="text-blue-400" />
         </div>
-        <span className="text-sm text-gray-600 text-center">{label}</span>
-        <span className="text-xs text-gray-400">PDF or DOCX files</span>
+        <span className="text-sm text-black/60 text-center">{label}</span>
+        <span className="text-xs text-black/30">PDF or DOCX files</span>
         <input
           type="file"
           accept={accept}

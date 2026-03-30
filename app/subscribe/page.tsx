@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FileText, CheckCircle, ArrowRight, Shield, Zap, Loader2 } from 'lucide-react';
+import { CheckCircle, ArrowRight, Shield, Zap, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
 const included = [
@@ -16,6 +16,7 @@ const included = [
 ];
 
 export default function SubscribePage() {
+  const [plan, setPlan] = useState<'monthly' | 'yearly'>('monthly');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +25,11 @@ export default function SubscribePage() {
     setError(null);
 
     try {
-      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+      });
       const data = await res.json();
 
       if (!res.ok || !data.url) {
@@ -39,6 +44,9 @@ export default function SubscribePage() {
       setIsLoading(false);
     }
   };
+
+  const isYearly = plan === 'yearly';
+  const monthlySavings = Math.round(((499 * 12 - 4999) / (499 * 12)) * 100);
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -56,20 +64,59 @@ export default function SubscribePage() {
       </header>
 
       <div className="max-w-5xl mx-auto px-6 py-20">
-        <div className="text-center mb-14">
+        <div className="text-center mb-10">
           <h1 className="text-4xl font-black mb-3">One plan. Everything included.</h1>
           <p className="text-black/50 text-lg">No tiers, no surprises. Just one flat rate to slay all your paperwork.</p>
+        </div>
+
+        {/* Billing toggle */}
+        <div className="flex items-center justify-center mb-10">
+          <div className="flex items-center gap-1 bg-black/5 rounded-xl p-1">
+            <button
+              onClick={() => setPlan('monthly')}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                !isYearly ? 'bg-black text-white shadow-sm' : 'text-black/50 hover:text-black'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setPlan('yearly')}
+              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                isYearly ? 'bg-black text-white shadow-sm' : 'text-black/50 hover:text-black'
+              }`}
+            >
+              Yearly
+              <span className={`text-xs font-bold px-1.5 py-0.5 rounded-md ${isYearly ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700'}`}>
+                Save {monthlySavings}%
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 items-start max-w-3xl mx-auto">
           {/* Plan card */}
           <div className="bg-black text-white rounded-2xl p-8">
             <div className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-4">PaperworkSlayer Pro</div>
+
             <div className="mb-1">
-              <span className="text-6xl font-black">$499</span>
-              <span className="text-white/40 text-lg ml-1">/month</span>
+              {isYearly ? (
+                <>
+                  <span className="text-6xl font-black">$4,999</span>
+                  <span className="text-white/40 text-lg ml-1">/year</span>
+                  <div className="text-white/30 text-sm mt-1 line-through">${(499 * 12).toLocaleString()}/year</div>
+                </>
+              ) : (
+                <>
+                  <span className="text-6xl font-black">$499</span>
+                  <span className="text-white/40 text-lg ml-1">/month</span>
+                </>
+              )}
             </div>
-            <p className="text-white/40 text-sm mb-8">Billed monthly. Cancel anytime.</p>
+
+            <p className="text-white/40 text-sm mb-8">
+              {isYearly ? 'Billed once a year. Cancel anytime.' : 'Billed monthly. Cancel anytime.'}
+            </p>
 
             {error && (
               <div className="bg-white/10 border border-white/20 text-white/80 text-sm rounded-xl p-3 mb-4">
@@ -128,8 +175,8 @@ export default function SubscribePage() {
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-black/30">
           <span>© 2026 Loophole Media Inc. All rights reserved.</span>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-black transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-black transition-colors">Terms of Service</a>
+            <Link href="/privacy" className="hover:text-black transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-black transition-colors">Terms of Service</Link>
           </div>
         </div>
       </footer>

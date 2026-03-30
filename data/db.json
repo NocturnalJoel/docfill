@@ -7,7 +7,7 @@
     },
     {
       "id": "072b9db4-b932-4d5d-a6aa-c1aaec072c5f",
-      "name": "mike",
+      "name": "Marcus J. Delacroix",
       "createdAt": "2026-03-16T00:59:41.801Z"
     },
     {
@@ -99,87 +99,6 @@
       "pageCount": 1
     },
     {
-      "id": "c23ced46-4954-4712-9a4f-fca33767e93a",
-      "clientId": "072b9db4-b932-4d5d-a6aa-c1aaec072c5f",
-      "fileName": "test form janet.pdf",
-      "fileType": "pdf",
-      "fileUrl": "/api/files/c23ced46-4954-4712-9a4f-fca33767e93a",
-      "uploadedAt": "2026-03-16T00:59:50.543Z",
-      "fields": [
-        {
-          "id": "347a260d-1c5d-453a-9be6-f46a091279ce",
-          "fieldName": "Name",
-          "value": "Janets",
-          "rectangle": {
-            "x": 0.11764705882352941,
-            "y": 0.09000000000000008,
-            "width": 0.15933494117647057,
-            "height": 0.025151515151515154,
-            "pageNumber": 1
-          },
-          "color": "#3B82F6",
-          "confirmed": true
-        },
-        {
-          "id": "238c62a3-7160-4558-a4e0-0011f044c195",
-          "fieldName": "City",
-          "value": "Cincinatti",
-          "rectangle": {
-            "x": 0.11764705882352941,
-            "y": 0.12696969696969707,
-            "width": 0.1794234509803922,
-            "height": 0.025151515151515154,
-            "pageNumber": 1
-          },
-          "color": "#10B981",
-          "confirmed": true
-        },
-        {
-          "id": "8bb142e8-0103-415e-ac25-5f3a6e408b3f",
-          "fieldName": "Gender",
-          "value": "Female",
-          "rectangle": {
-            "x": 0.11764705882352941,
-            "y": 0.16393939393939394,
-            "width": 0.1894233333333334,
-            "height": 0.025151515151515154,
-            "pageNumber": 1
-          },
-          "color": "#F59E0B",
-          "confirmed": true
-        },
-        {
-          "id": "a924bbd1-65f6-49f0-be7e-b96c5cdfa6bb",
-          "fieldName": "Language spoken",
-          "value": "Arabic",
-          "rectangle": {
-            "x": 0.11764705882352941,
-            "y": 0.2009090770374645,
-            "width": 0.611764705882353,
-            "height": 0.022727272727272728,
-            "pageNumber": 1
-          },
-          "color": "#EF4444",
-          "confirmed": true
-        },
-        {
-          "id": "f798ae40-70f8-46a0-bdf4-85bfbf6d3927",
-          "fieldName": "country",
-          "value": "orange",
-          "rectangle": {
-            "x": 0.14411764705882352,
-            "y": 0.2840909090909091,
-            "width": 0.11176470588235295,
-            "height": 0.07954545454545454,
-            "pageNumber": 1
-          },
-          "color": "#8B5CF6",
-          "confirmed": true
-        }
-      ],
-      "pageCount": 1
-    },
-    {
       "id": "9b13598f-b9ac-4667-8ec4-ea387eb9e41f",
       "clientId": "2e985a30-1a27-402f-bcff-0b0e3a15584f",
       "fileName": "test form.docx",
@@ -231,73 +150,6 @@
         },
         {
           "id": "675e5518-908e-48b2-b1a9-402577fb321a",
-          "fieldName": "Language spoken",
-          "value": "Arabic",
-          "rectangle": {
-            "x": 0.05,
-            "y": 0.75,
-            "width": 0.6,
-            "height": 0.03,
-            "pageNumber": 1
-          },
-          "color": "#EF4444",
-          "confirmed": false
-        }
-      ],
-      "pageCount": 1
-    },
-    {
-      "id": "21343c1d-7fa9-41e7-b819-5d44118c9a7b",
-      "clientId": "072b9db4-b932-4d5d-a6aa-c1aaec072c5f",
-      "fileName": "Test form word filled.docx",
-      "fileType": "word",
-      "fileUrl": "/api/files/21343c1d-7fa9-41e7-b819-5d44118c9a7b",
-      "uploadedAt": "2026-03-19T01:47:48.995Z",
-      "fields": [
-        {
-          "id": "785ed830-2ca9-4fc6-b5f0-314be3f6f948",
-          "fieldName": "Name",
-          "value": "Janet",
-          "rectangle": {
-            "x": 0.05,
-            "y": 0.02,
-            "width": 0.6,
-            "height": 0.03,
-            "pageNumber": 1
-          },
-          "color": "#3B82F6",
-          "confirmed": false
-        },
-        {
-          "id": "762ca03c-c90f-49c5-9c4b-e288dbfe3cdd",
-          "fieldName": "City",
-          "value": "Cincinatti",
-          "rectangle": {
-            "x": 0.05,
-            "y": 0.25,
-            "width": 0.6,
-            "height": 0.03,
-            "pageNumber": 1
-          },
-          "color": "#10B981",
-          "confirmed": false
-        },
-        {
-          "id": "2d4351ca-d464-4b3e-a95b-16a7875d9f1f",
-          "fieldName": "Gender",
-          "value": "Female",
-          "rectangle": {
-            "x": 0.05,
-            "y": 0.5,
-            "width": 0.6,
-            "height": 0.03,
-            "pageNumber": 1
-          },
-          "color": "#F59E0B",
-          "confirmed": false
-        },
-        {
-          "id": "689f84f6-43ea-467c-ba50-09b7f0488fe6",
           "fieldName": "Language spoken",
           "value": "Arabic",
           "rectangle": {
@@ -443,6 +295,363 @@
           },
           "color": "#EF4444",
           "confirmed": false
+        }
+      ],
+      "pageCount": 1
+    },
+    {
+      "id": "813449bc-7206-4aac-92c6-87330dc348e0",
+      "clientId": "61902dd5-4197-4ac0-9e39-4831445a8429",
+      "fileName": "Marcus Form.pdf",
+      "fileType": "pdf",
+      "fileUrl": "/api/files/813449bc-7206-4aac-92c6-87330dc348e0",
+      "uploadedAt": "2026-03-23T16:11:13.747Z",
+      "fields": [],
+      "pageCount": 1
+    },
+    {
+      "id": "52d7f7d8-9f07-4d32-a0ab-3cd90b0e731a",
+      "clientId": "072b9db4-b932-4d5d-a6aa-c1aaec072c5f",
+      "fileName": "Marcus Form.pdf",
+      "fileType": "pdf",
+      "fileUrl": "/api/files/52d7f7d8-9f07-4d32-a0ab-3cd90b0e731a",
+      "uploadedAt": "2026-03-23T16:17:35.019Z",
+      "fields": [
+        {
+          "id": "b48d6862-2f79-45cf-bc88-28f6524334f8",
+          "fieldName": "Form #",
+          "value": "BPS-2024-0047",
+          "rectangle": {
+            "x": 0.11574346405228757,
+            "y": 0.158439393939394,
+            "width": 0.09854575163398693,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#3B82F6",
+          "confirmed": true
+        },
+        {
+          "id": "3bb26048-b3c5-4286-bd96-c667711a4518",
+          "fieldName": "Date Received",
+          "value": "March 14, 2025",
+          "rectangle": {
+            "x": 0.49202882014874916,
+            "y": 0.158439393939394,
+            "width": 0.09913539553752528,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#10B981",
+          "confirmed": true
+        },
+        {
+          "id": "3e3dcd71-8b23-48e5-87b9-026e277156bf",
+          "fieldName": "Assigned Rep",
+          "value": "Sarah M.",
+          "rectangle": {
+            "x": 0.8641945187165777,
+            "y": 0.158439393939394,
+            "width": 0.06433489304812841,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#F59E0B",
+          "confirmed": true
+        },
+        {
+          "id": "d1647038-63ca-4683-8cd2-ab82f70e6eda",
+          "fieldName": "Priority",
+          "value": "tax compliance and website launch before Q2.",
+          "rectangle": {
+            "x": 0.1405077614379085,
+            "y": 0.714449494949495,
+            "width": 0.2898263888888889,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#EF4444",
+          "confirmed": true
+        },
+        {
+          "id": "eb11939d-df40-4d24-8d3c-f882aa4abb81",
+          "fieldName": "Full Name",
+          "value": "Marcus J. Delacroix",
+          "rectangle": {
+            "x": 0.2446732026143791,
+            "y": 0.21513131313131306,
+            "width": 0.13910294117647068,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#8B5CF6",
+          "confirmed": true
+        },
+        {
+          "id": "11d955d7-0cb0-43e4-8d41-b11e8e42395d",
+          "fieldName": "Date of Birth",
+          "value": "08 / 22 / 1984",
+          "rectangle": {
+            "x": 0.7838888888888889,
+            "y": 0.21513131313131306,
+            "width": 0.09994117647058808,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#EC4899",
+          "confirmed": true
+        },
+        {
+          "id": "be277e86-b880-4a6c-b42f-09b597a10dff",
+          "fieldName": "Company / Org",
+          "value": "Delacroix Woodcraft LLC",
+          "rectangle": {
+            "x": 0.2446732026143791,
+            "y": 0.2451313131313131,
+            "width": 0.1734411764705883,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#06B6D4",
+          "confirmed": true
+        },
+        {
+          "id": "a5e0ebc3-fc26-4fb9-ae53-90a2f9313a1e",
+          "fieldName": "Industry",
+          "value": "Manufacturing / Retail",
+          "rectangle": {
+            "x": 0.7838888888888889,
+            "y": 0.2451313131313131,
+            "width": 0.15302941176470575,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#84CC16",
+          "confirmed": true
+        },
+        {
+          "id": "62120c30-e383-4b34-b93a-eb9684082411",
+          "fieldName": "Email Address",
+          "value": "marcus@delacroixwoodcraft.com",
+          "rectangle": {
+            "x": 0.2446732026143791,
+            "y": 0.2751313131313131,
+            "width": 0.22758823529411767,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#3B82F6",
+          "confirmed": true
+        },
+        {
+          "id": "d173471d-6b76-4fcd-a4c5-a04d901cc055",
+          "fieldName": "Phone",
+          "value": "(514) 882-3301",
+          "rectangle": {
+            "x": 0.7675490196078432,
+            "y": 0.2751313131313131,
+            "width": 0.11054411764705883,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#10B981",
+          "confirmed": true
+        },
+        {
+          "id": "2cc30cd7-2bd9-4d77-bb46-7a339d865916",
+          "fieldName": "Street Address",
+          "value": "221 Rue des Artisans",
+          "rectangle": {
+            "x": 0.2446732026143791,
+            "y": 0.30513131313131303,
+            "width": 0.15058823529411772,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#F59E0B",
+          "confirmed": true
+        },
+        {
+          "id": "15359a3a-53dc-4cfa-b028-0ff40ef09f88",
+          "fieldName": "City",
+          "value": "Montréal",
+          "rectangle": {
+            "x": 0.2446732026143791,
+            "y": 0.33513131313131306,
+            "width": 0.06720588235294118,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#EF4444",
+          "confirmed": true
+        },
+        {
+          "id": "9aa434aa-217b-4929-9f60-8efe30c3da5b",
+          "fieldName": "Province / State",
+          "value": "QC",
+          "rectangle": {
+            "x": 0.6858496732026144,
+            "y": 0.33513131313131306,
+            "width": 0.04,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#8B5CF6",
+          "confirmed": true
+        },
+        {
+          "id": "64537693-0fe2-4755-b0d6-d1cac0921230",
+          "fieldName": "Postal Code",
+          "value": "H3K 2",
+          "rectangle": {
+            "x": 0.9554575163398692,
+            "y": 0.33513131313131306,
+            "width": 0.0508676470588234,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#EC4899",
+          "confirmed": true
+        },
+        {
+          "id": "2fc7f988-9638-47ad-adc3-1d00a254a0f8",
+          "fieldName": "Referred By",
+          "value": "Google Search / Online Ad Existing Client? No — New Intake",
+          "rectangle": {
+            "x": 0.24467306698069852,
+            "y": 0.3651313781738281,
+            "width": 0.18382352941176472,
+            "height": 0.022727272727272728,
+            "pageNumber": 1
+          },
+          "color": "#06B6D4",
+          "confirmed": true
+        },
+        {
+          "id": "752a2621-6f3a-491a-96b2-d41c2ed051e1",
+          "fieldName": "Services required",
+          "value": "Financial Planning Review Brand Strategy",
+          "rectangle": {
+            "x": 0.07539215087890624,
+            "y": 0.4659141540527344,
+            "width": 0.7897058823529411,
+            "height": 0.06818181818181818,
+            "pageNumber": 1
+          },
+          "color": "#84CC16",
+          "confirmed": true
+        },
+        {
+          "id": "52883088-0bd5-4313-9d0a-796d82652fa2",
+          "fieldName": "Service Start Date",
+          "value": "April 1, 2025",
+          "rectangle": {
+            "x": 0.2773529411764706,
+            "y": 0.5478585858585858,
+            "width": 0.09255882352941179,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#3B82F6",
+          "confirmed": true
+        },
+        {
+          "id": "ce6cb574-02cd-4007-a316-678e5d9b56ac",
+          "fieldName": "Preferred Schedule",
+          "value": "Tuesdays & Thursdays, 10 AM –",
+          "rectangle": {
+            "x": 0.7838888888888889,
+            "y": 0.5478585858585858,
+            "width": 0.22332352941176425,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#10B981",
+          "confirmed": true
+        },
+        {
+          "id": "e68d7d8c-8a63-4e74-b4ab-5fb06861596c",
+          "fieldName": "Billing Name",
+          "value": "Delacroix Woodcraft LLC",
+          "rectangle": {
+            "x": 0.26101307189542483,
+            "y": 0.7951313131313131,
+            "width": 0.17344117647058832,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#F59E0B",
+          "confirmed": true
+        },
+        {
+          "id": "37667bf1-f30b-457e-b55e-527f8dec9ae5",
+          "fieldName": "GST / HST No.",
+          "value": "82 4491 3307 RT0001",
+          "rectangle": {
+            "x": 0.8002287581699347,
+            "y": 0.7951313131313131,
+            "width": 0.1563382352941175,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#EF4444",
+          "confirmed": true
+        },
+        {
+          "id": "3f86fe7f-346e-4c4e-bd1e-509b701549b7",
+          "fieldName": "Invoice Email",
+          "value": "accounts@delacroixwoodcraft.com",
+          "rectangle": {
+            "x": 0.26101307189542483,
+            "y": 0.8251313131313132,
+            "width": 0.23823529411764716,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#8B5CF6",
+          "confirmed": true
+        },
+        {
+          "id": "538a4617-50aa-48c0-9433-1a4503c276f9",
+          "fieldName": "Payment Terms",
+          "value": "Net 15",
+          "rectangle": {
+            "x": 0.8655882352941175,
+            "y": 0.8251313131313132,
+            "width": 0.05332352941176465,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#EC4899",
+          "confirmed": true
+        },
+        {
+          "id": "3c7f0ce5-4432-4056-a757-d28cbafa7e72",
+          "fieldName": "Preferred Payment Method",
+          "value": "e-Transfer Credit Card Cheque Bank Transfer",
+          "rectangle": {
+            "x": 0.37049019607843137,
+            "y": 0.8608131313131313,
+            "width": 0.49754901960784315,
+            "height": 0.022,
+            "pageNumber": 1
+          },
+          "color": "#06B6D4",
+          "confirmed": true
+        },
+        {
+          "id": "3c4c78e9-2724-46aa-906b-3f337f987882",
+          "fieldName": "Existing client",
+          "value": "No - New Intake",
+          "rectangle": {
+            "x": 0.7796042049632353,
+            "y": 0.3675825639204545,
+            "width": 0.15441176470588236,
+            "height": 0.025,
+            "pageNumber": 1
+          },
+          "color": "#84CC16",
+          "confirmed": true
         }
       ],
       "pageCount": 1

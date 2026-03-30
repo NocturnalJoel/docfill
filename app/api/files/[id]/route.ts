@@ -1,6 +1,8 @@
+import fs from 'fs';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isDevRequest } from '@/lib/dev';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,6 +13,33 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
+    if (isDevRequest(request)) {
+      const store = await import('@/lib/store');
+
+      if (request.nextUrl.searchParams.get('html') === 'true') {
+        const html = store.getHtmlContent(id);
+        if (!html) return NextResponse.json({ error: 'HTML not found' }, { status: 404 });
+        return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      }
+
+      const filePath = store.getUploadedFilePath(id);
+      if (!filePath) return NextResponse.json({ error: 'File not found' }, { status: 404 });
+
+      const fileExt = filePath.toLowerCase().endsWith('.pdf') ? '.pdf' : '.docx';
+      const contentType = fileExt === '.pdf' ? 'application/pdf'
+        : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      const buffer = fs.readFileSync(filePath);
+
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': contentType,
+          'Content-Disposition': `inline; filename="${id}${fileExt}"`,
+          'Cache-Control': 'private, max-age=3600',
+        },
+      });
+    }
+
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -2,16 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { Client } from '@/lib/types';
+import { isDevRequest } from '@/lib/dev';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+
+    if (isDevRequest(request)) {
+      const store = await import('@/lib/store');
+      const client = store.getClient(id);
+      if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+      return NextResponse.json({ client });
+    }
+
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -47,11 +56,23 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    const body = await request.json();
+
+    if (isDevRequest(request)) {
+      const store = await import('@/lib/store');
+      const updates: Partial<Client> = {};
+      if (body.name !== undefined) updates.name = body.name;
+      if (body.email !== undefined) updates.email = body.email || undefined;
+      if (body.company !== undefined) updates.company = body.company || undefined;
+      const client = store.updateClient(id, updates);
+      if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+      return NextResponse.json({ client });
+    }
+
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = await request.json();
     const admin = createAdminClient();
 
     const updateData: Record<string, unknown> = {};
@@ -85,11 +106,18 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+
+    if (isDevRequest(request)) {
+      const store = await import('@/lib/store');
+      store.deleteClient(id);
+      return NextResponse.json({ success: true });
+    }
+
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

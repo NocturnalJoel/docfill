@@ -2,26 +2,39 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ClientDocument } from '@/lib/types';
+import { DEV_USER_ID, isDevRequest } from '@/lib/dev';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    let userId: string;
+    if (isDevRequest(request)) {
+      userId = DEV_USER_ID;
+    } else {
+      const supabase = await createClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      userId = user.id;
+    }
+
+    if (isDevRequest(request)) {
+      const store = await import('@/lib/store');
+      const documents = store.getClientDocuments(id);
+      return NextResponse.json({ documents });
+    }
 
     const admin = createAdminClient();
     const { data, error } = await admin
       .from('client_documents')
       .select('*')
       .eq('client_id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('uploaded_at', { ascending: false });
 
     if (error) return NextResponse.json({ error: 'Failed to get documents' }, { status: 500 });
