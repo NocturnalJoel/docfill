@@ -94,7 +94,7 @@ async function generateWordDocument(
   originalFileName: string,
   fieldMap: Map<string, string>,
   placeholderMap: Map<string, string>,
-  positionalFields: Array<{ fieldName: string; value: string; y: number }>,
+  positionalFields: Array<{ fieldName: string; value: string; x: number; y: number; w: number; h: number; containerWidth: number; containerHeight: number }>,
   outputFormat: 'docx' | 'pdf'
 ) {
   const PizZip = (await import('pizzip')).default;
