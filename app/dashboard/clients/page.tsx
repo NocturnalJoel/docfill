@@ -199,9 +199,9 @@ export default function ClientsPage() {
   }, []);
 
   const handleFieldEdit = (id: string, key: 'fieldName' | 'value', val: string) => {
-    setLocalFields((prev) =>
-      prev.map((f) => f.id === id ? { ...f, [key]: val, confirmed: false } : f)
-    );
+    const update = (f: DetectedField) => f.id === id ? { ...f, [key]: val, confirmed: false } : f;
+    setLocalFields((prev) => prev.map(update));
+    setCurrentFields((prev) => prev.map(update));
     setDirtyFieldIds((prev) => new Set(prev).add(id));
   };
 
@@ -228,6 +228,7 @@ export default function ClientsPage() {
 
   const handleDeleteLocalField = async (id: string) => {
     setLocalFields((prev) => prev.filter((f) => f.id !== id));
+    setCurrentFields((prev) => prev.filter((f) => f.id !== id));
     setDirtyFieldIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
     for (const doc of documents) {
       const updatedFields = doc.fields.filter((f) => f.id !== id);
@@ -252,6 +253,7 @@ export default function ClientsPage() {
       rectangle: { x: 0, y: 0, width: 0, height: 0, pageNumber: 1 },
     };
     setLocalFields((prev) => [...prev, newField]);
+    setCurrentFields((prev) => [...prev, newField]);
     setDirtyFieldIds((prev) => new Set(prev).add(newField.id));
     if (selectedDocId) {
       setDocuments((prev) => prev.map((d) => d.id === selectedDocId ? { ...d, fields: [...d.fields, newField] } : d));

@@ -324,11 +324,21 @@ export default function DocumentViewer({
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
-  const confirmAll = () => {
+  const confirmAll = async () => {
     if (mode === 'client') {
-      onFieldsChange(
-        (fields as DetectedField[]).map((f) => ({ ...f, confirmed: true }))
-      );
+      const confirmed = (fields as DetectedField[]).map((f) => ({ ...f, confirmed: true }));
+      onFieldsChange(confirmed);
+      setIsSaving(true);
+      setSaveSuccess(false);
+      try {
+        await onSave(confirmed, numPages || 1);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+      } catch {
+        setError('Failed to save');
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -403,17 +413,6 @@ export default function DocumentViewer({
           <Plus size={12} />
           {isAddingField ? 'Draw rectangle...' : 'Add Field'}
         </button>
-        <div className="flex-1" />
-        {!hideSave && (
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50"
-          >
-            {isSaving ? <Loader2 size={12} className="animate-spin" /> : saveSuccess ? <Check size={12} /> : <Save size={12} />}
-            {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save Fields'}
-          </button>
-        )}
       </div>
 
       {/* PDF Document */}
@@ -784,17 +783,6 @@ function WordDocumentViewer({
           <Plus size={12} />
           {isAddingField ? 'Draw rectangle...' : 'Add Field'}
         </button>
-        <div className="flex-1" />
-        {!hideSave && (
-          <button
-            onClick={onSave}
-            disabled={isSaving}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50"
-          >
-            {isSaving ? <Loader2 size={12} className="animate-spin" /> : saveSuccess ? <Check size={12} /> : <Save size={12} />}
-            {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save Fields'}
-          </button>
-        )}
       </div>
 
       {/* Document + Overlay */}
