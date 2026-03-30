@@ -17,16 +17,27 @@ export default function LoginPage() {
     setError(null);
     setIsLoading(true);
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const supabase = createClient();
 
-    if (authError) {
-      setError(authError.message);
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out — check your connection and try again.')), 10000)
+      );
+
+      const authPromise = supabase.auth.signInWithPassword({ email, password });
+      const { error: authError } = await Promise.race([authPromise, timeout]);
+
+      if (authError) {
+        setError(authError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      window.location.href = '/dashboard/clients';
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       setIsLoading(false);
-      return;
     }
-
-    window.location.href = '/dashboard/clients';
   };
 
   return (
