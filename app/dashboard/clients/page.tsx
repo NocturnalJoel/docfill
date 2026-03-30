@@ -208,6 +208,42 @@ export default function ClientsPage() {
     setDirtyFieldIds((prev) => new Set(prev).add(id));
   };
 
+  const handleConfirmField = (id: string) => {
+    setLocalFields((prev) => prev.map((f) => f.id === id ? { ...f, confirmed: true } : f));
+    setDirtyFieldIds((prev) => new Set(prev).add(id));
+  };
+
+  const handleDeleteLocalField = async (id: string) => {
+    setLocalFields((prev) => prev.filter((f) => f.id !== id));
+    setDirtyFieldIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+    for (const doc of documents) {
+      const updatedFields = doc.fields.filter((f) => f.id !== id);
+      if (updatedFields.length !== doc.fields.length) {
+        const res = await fetch(`/api/documents/${doc.id}/fields`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: updatedFields, pageCount: doc.pageCount }),
+        });
+        if (res.ok) setDocuments((prev) => prev.map((d) => d.id === doc.id ? { ...d, fields: updatedFields } : d));
+      }
+    }
+  };
+
+  const handleAddLocalField = () => {
+    const newField: DetectedField = {
+      id: uuidv4(),
+      fieldName: '',
+      value: '',
+      color: getFieldColor(localFields.length),
+      confirmed: false,
+    };
+    setLocalFields((prev) => [...prev, newField]);
+    setDirtyFieldIds((prev) => new Set(prev).add(newField.id));
+    if (selectedDocId) {
+      setDocuments((prev) => prev.map((d) => d.id === selectedDocId ? { ...d, fields: [...d.fields, newField] } : d));
+    }
+  };
+
   const handleSaveFieldEdits = async () => {
     if (dirtyFieldIds.size === 0) return;
     setIsSavingFields(true);
@@ -513,57 +549,83 @@ export default function ClientsPage() {
               </div>
             )}
 
-            {/* All extracted fields */}
-            {localFields.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-black text-sm">
-                    All Client Fields ({localFields.length})
-                  </h3>
-                  {dirtyFieldIds.size > 0 && (
-                    <button
-                      onClick={handleSaveFieldEdits}
-                      disabled={isSavingFields}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-black text-white rounded-lg text-xs font-medium hover:bg-black/80 transition-colors disabled:opacity-50"
-                    >
-                      {isSavingFields ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                      Save Changes
-                    </button>
-                  )}
+            {/* Extracted fields — same style as try page */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-bold text-black">Extracted fields</h3>
+                {dirtyFieldIds.size > 0 && (
+                  <button
+                    onClick={handleSaveFieldEdits}
+                    disabled={isSavingFields}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-black text-white rounded-lg text-xs font-medium hover:bg-black/80 transition-colors disabled:opacity-50"
+                  >
+                    {isSavingFields ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                    Save Changes
+                  </button>
+                )}
+              </div>
+              <p className="text-sm text-black/40 mb-4">Verify names and values. Click Confirm when a field looks right.</p>
+
+              <div className="rounded-xl border border-black/10 overflow-hidden">
+                <div className="grid grid-cols-[1fr_1fr_auto] text-xs font-semibold text-black/40 px-4 py-2 border-b border-black/5 bg-black/[0.02]">
+                  <span>Field name</span>
+                  <span>Value</span>
+                  <span />
                 </div>
-                <div className="bg-black/[0.02] rounded-xl border border-black/10 overflow-hidden">
-                  <div className="divide-y divide-black/5">
-                    {localFields.map((field) => {
-                      const isDirty = dirtyFieldIds.has(field.id);
-                      return (
-                        <div key={field.id} className="flex items-center gap-3 px-4 py-2">
-                          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: field.color }} />
+                <div className="divide-y divide-black/5">
+                  {localFields.length === 0 && (
+                    <p className="px-4 py-4 text-sm text-black/30 italic">No fields detected — add them manually below.</p>
+                  )}
+                  {localFields.map((field) => {
+                    const isDirty = dirtyFieldIds.has(field.id);
+                    return (
+                      <div key={field.id} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 px-4 py-2 items-center">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: field.color }} />
                           <input
-                            className="text-xs font-medium text-black/70 w-36 bg-transparent border-b border-transparent hover:border-black/20 focus:border-black focus:outline-none py-0.5 truncate"
+                            className="text-sm text-black/70 font-medium bg-transparent border-b border-transparent hover:border-black/20 focus:border-black focus:outline-none py-0.5 w-full min-w-0"
                             value={field.fieldName}
+                            placeholder="Field name"
                             onChange={(e) => handleFieldEdit(field.id, 'fieldName', e.target.value)}
                           />
-                          <input
-                            className="text-xs text-black/50 flex-1 bg-transparent border-b border-transparent hover:border-black/20 focus:border-black focus:outline-none py-0.5 truncate"
-                            value={field.value}
-                            onChange={(e) => handleFieldEdit(field.id, 'value', e.target.value)}
-                          />
-                          <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${
-                            isDirty
-                              ? 'bg-yellow-50 text-yellow-600'
-                              : field.confirmed
-                              ? 'bg-green-50 text-green-600'
-                              : 'bg-black/5 text-black/40'
-                          }`}>
-                            {isDirty ? 'Unconfirmed' : field.confirmed ? 'Confirmed' : 'Unconfirmed'}
-                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <input
+                          className="text-sm text-black/50 bg-transparent border-b border-transparent hover:border-black/20 focus:border-black focus:outline-none py-0.5"
+                          value={field.value}
+                          placeholder="Value"
+                          onChange={(e) => handleFieldEdit(field.id, 'value', e.target.value)}
+                        />
+                        {field.confirmed && !isDirty ? (
+                          <span className="flex items-center gap-1 text-[11px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                            <Check size={10} /> Confirmed
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleConfirmField(field.id)}
+                            className="flex items-center gap-1 text-[11px] font-medium text-amber-600 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-full whitespace-nowrap transition-colors"
+                          >
+                            <Check size={10} /> Confirm
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteLocalField(field.id)}
+                          className="text-black/20 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            )}
+
+              <button
+                onClick={handleAddLocalField}
+                className="flex items-center gap-1.5 text-sm text-black/40 hover:text-black transition-colors mt-3"
+              >
+                <Plus size={14} /> Add field
+              </button>
+            </div>
           </div>
         )}
 
