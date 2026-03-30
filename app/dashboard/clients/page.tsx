@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Plus, Trash2, Edit3, Upload, FileText, File, ChevronRight,
+  Plus, Trash2, Edit3, FileText, File, ChevronRight,
   User, Mail, Building2, Loader2, X, Check, AlertCircle, Eye
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -40,17 +40,9 @@ export default function ClientsPage() {
   const [wordHtml, setWordHtml] = useState<string | undefined>(undefined);
   const [localFields, setLocalFields] = useState<DetectedField[]>([]);
   const [dirtyFieldIds, setDirtyFieldIds] = useState<Set<string>>(new Set());
-  const [isSavingFields, setIsSavingFields] = useState(false);
 
   const selectedClient = clients.find((c) => c.id === selectedClientId) || null;
   const selectedDoc = documents.find((d) => d.id === selectedDocId) || null;
-  const allFields = documents.flatMap((d) => d.fields);
-  const uniqueFields = deduplicateFields(allFields);
-
-  useEffect(() => {
-    setLocalFields(deduplicateFields(documents.flatMap((d) => d.fields)));
-    setDirtyFieldIds(new Set());
-  }, [documents]);
 
   useEffect(() => { fetchClients(); }, []);
 
@@ -86,8 +78,11 @@ export default function ClientsPage() {
   };
 
   useEffect(() => {
-    if (!selectedDoc) { setCurrentFields([]); setWordHtml(undefined); return; }
-    setCurrentFields(selectedDoc.fields || []);
+    if (!selectedDoc) { setCurrentFields([]); setWordHtml(undefined); setLocalFields([]); setDirtyFieldIds(new Set()); return; }
+    const fields = selectedDoc.fields || [];
+    setCurrentFields(fields);
+    setLocalFields(deduplicateFields(fields));
+    setDirtyFieldIds(new Set());
     if (selectedDoc.fileType === 'word') {
       setWordHtml(undefined);
       fetch(`/api/files/${selectedDoc.id}?html=true`)
@@ -198,7 +193,9 @@ export default function ClientsPage() {
   );
 
   const handleFieldsChange = useCallback((fields: DetectedField[] | unknown) => {
-    setCurrentFields(fields as DetectedField[]);
+    const f = fields as DetectedField[];
+    setCurrentFields(f);
+    setLocalFields(deduplicateFields(f));
   }, []);
 
   const handleFieldEdit = (id: string, key: 'fieldName' | 'value', val: string) => {
@@ -208,9 +205,25 @@ export default function ClientsPage() {
     setDirtyFieldIds((prev) => new Set(prev).add(id));
   };
 
-  const handleConfirmField = (id: string) => {
-    setLocalFields((prev) => prev.map((f) => f.id === id ? { ...f, confirmed: true } : f));
-    setDirtyFieldIds((prev) => new Set(prev).add(id));
+  const handleConfirmField = async (id: string) => {
+    const updatedLocal = localFields.map((f) => f.id === id ? { ...f, confirmed: true } : f);
+    setLocalFields(updatedLocal);
+    setDirtyFieldIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+    for (const doc of documents) {
+      const updatedFields = doc.fields.map((f) => {
+        if (f.id !== id) return f;
+        const edited = updatedLocal.find((lf) => lf.id === id);
+        return edited ? { ...edited, confirmed: true } : { ...f, confirmed: true };
+      });
+      if (updatedFields.some((f, i) => f !== doc.fields[i])) {
+        const res = await fetch(`/api/documents/${doc.id}/fields`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: updatedFields, pageCount: doc.pageCount }),
+        });
+        if (res.ok) setDocuments((prev) => prev.map((d) => d.id === doc.id ? { ...d, fields: updatedFields } : d));
+      }
+    }
   };
 
   const handleDeleteLocalField = async (id: string) => {
@@ -236,6 +249,7 @@ export default function ClientsPage() {
       value: '',
       color: getFieldColor(localFields.length),
       confirmed: false,
+      rectangle: { x: 0, y: 0, width: 0, height: 0, pageNumber: 1 },
     };
     setLocalFields((prev) => [...prev, newField]);
     setDirtyFieldIds((prev) => new Set(prev).add(newField.id));
@@ -244,40 +258,6 @@ export default function ClientsPage() {
     }
   };
 
-  const handleSaveFieldEdits = async () => {
-    if (dirtyFieldIds.size === 0) return;
-    setIsSavingFields(true);
-    try {
-      for (const doc of documents) {
-        const updatedFields = doc.fields.map((f) => {
-          if (!dirtyFieldIds.has(f.id)) return f;
-          const edited = localFields.find((lf) => lf.id === f.id);
-          if (!edited) return f;
-          return { ...edited, confirmed: true };
-        });
-        const changed = updatedFields.some((f, i) => f !== doc.fields[i]);
-        if (changed) {
-          const res = await fetch(`/api/documents/${doc.id}/fields`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fields: updatedFields, pageCount: doc.pageCount }),
-          });
-          const data = await res.json();
-          if (res.ok) {
-            setDocuments((prev) => prev.map((d) => d.id === doc.id ? { ...d, fields: updatedFields } : d));
-          } else {
-            throw new Error(data.error);
-          }
-        }
-      }
-      setLocalFields((prev) => prev.map((f) => dirtyFieldIds.has(f.id) ? { ...f, confirmed: true } : f));
-      setDirtyFieldIds(new Set());
-    } catch {
-      setError('Failed to save field edits');
-    } finally {
-      setIsSavingFields(false);
-    }
-  };
 
   return (
     <div className="flex h-full">
@@ -551,20 +531,8 @@ export default function ClientsPage() {
 
             {/* Extracted fields — same style as try page */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="font-bold text-black">Extracted fields</h3>
-                {dirtyFieldIds.size > 0 && (
-                  <button
-                    onClick={handleSaveFieldEdits}
-                    disabled={isSavingFields}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-black text-white rounded-lg text-xs font-medium hover:bg-black/80 transition-colors disabled:opacity-50"
-                  >
-                    {isSavingFields ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                    Save Changes
-                  </button>
-                )}
-              </div>
-              <p className="text-sm text-black/40 mb-4">Verify names and values. Click Confirm when a field looks right.</p>
+              <h3 className="font-bold text-black mb-1">Extracted fields</h3>
+              <p className="text-sm text-black/40 mb-4">Verify names and values. Click Confirm to save a field.</p>
 
               <div className="rounded-xl border border-black/10 overflow-hidden">
                 <div className="grid grid-cols-[1fr_1fr_auto] text-xs font-semibold text-black/40 px-4 py-2 border-b border-black/5 bg-black/[0.02]">
