@@ -268,11 +268,11 @@ function ScreenshotCarousel() {
       </div>
 
       {/* Slider */}
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="relative rounded-2xl overflow-hidden border border-black/10 shadow-sm" style={{ aspectRatio: '16/9' }} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+      <div className="max-w-5xl mx-auto px-6">
+        <div className="relative rounded-2xl overflow-hidden border border-black/10 shadow-sm" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
           {/* Strip of all slides */}
           <div
-            className="flex h-full"
+            className="flex"
             style={{
               width: `${SLIDES.length * 100}%`,
               transform: `translateX(-${current * (100 / SLIDES.length)}%)`,
@@ -280,8 +280,8 @@ function ScreenshotCarousel() {
             }}
           >
             {SLIDES.map((slide) => (
-              <div key={slide.src} style={{ width: `${100 / SLIDES.length}%` }} className="h-full flex-shrink-0">
-                <img src={slide.src} alt={slide.alt} className="w-full h-full object-cover object-top" />
+              <div key={slide.src} style={{ width: `${100 / SLIDES.length}%` }} className="flex-shrink-0">
+                <img src={slide.src} alt={slide.alt} className="w-full h-auto block" />
               </div>
             ))}
           </div>
@@ -307,7 +307,7 @@ function ScreenshotCarousel() {
       </div>
 
       {/* Caption + dots */}
-      <div className="max-w-6xl mx-auto px-6 mt-6 flex items-center justify-between">
+      <div className="max-w-5xl mx-auto px-6 mt-6 flex items-center justify-between">
         <div>
           <p className="text-2xl font-semibold text-black">{SLIDES[current].title}</p>
           <p className="text-base text-black/50 mt-1.5">{SLIDES[current].desc}</p>

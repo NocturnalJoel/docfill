@@ -299,7 +299,7 @@ export default function TryPage() {
   return (
     <PageShell>
       {/* Step indicator */}
-      <div className="flex items-center gap-1 mb-10 max-w-2xl">
+      <div className="flex items-center gap-1 mb-10 max-w-2xl mx-auto">
         {([1, 2, 3, 4] as Step[]).map((s) => (
           <div key={s} className="flex items-center gap-1">
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
@@ -315,7 +315,7 @@ export default function TryPage() {
 
       {/* ── Step 1: Upload client document ── */}
       {step === 1 && (
-        <div className="max-w-2xl">
+        <div className="max-w-2xl mx-auto">
           <h1 className="text-2xl font-black mb-1">Upload client document</h1>
           <p className="text-black/50 mb-8">
             Drop in the document that contains your client&apos;s information — PDF or Word. We&apos;ll detect every field automatically.
@@ -377,7 +377,7 @@ export default function TryPage() {
           />
 
           {/* Editable field list */}
-          <div className="mt-8 max-w-2xl">
+          <div className="mt-8 max-w-2xl mx-auto">
             <h2 className="text-base font-bold mb-1">Extracted fields</h2>
             <p className="text-sm text-black/40 mb-4">
               Verify names and values. Changes here also update the rectangles above.
@@ -444,7 +444,7 @@ export default function TryPage() {
           {(() => {
             const unconfirmed = detectedFields.filter(f => !f.confirmed).length;
             return (
-              <div className="mt-8 max-w-2xl flex items-center justify-end gap-4">
+              <div className="mt-8 max-w-2xl mx-auto flex items-center justify-end gap-4">
                 {unconfirmed > 0 && (
                   <span className="text-sm text-amber-600">
                     {unconfirmed} field{unconfirmed !== 1 ? 's' : ''} still unconfirmed
@@ -465,7 +465,7 @@ export default function TryPage() {
 
       {/* ── Step 3a: Upload template ── */}
       {step === 3 && !isParsingTemplate && !templateFile && (
-        <div className="max-w-2xl">
+        <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-3 mb-1">
             <BackButton onClick={() => setStep(2)} />
             <h1 className="text-2xl font-black">Upload your template</h1>
@@ -503,7 +503,7 @@ export default function TryPage() {
 
       {/* ── Step 3c: Map fields ── */}
       {step === 3 && templateFile && !isParsingTemplate && (
-        <div className="max-w-2xl">
+        <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-3 mb-1">
             <BackButton onClick={() => { setTemplateFile(null); setTemplateFields([]); setTemplateHtml(''); setMappingRows([]); }} />
             <h1 className="text-2xl font-black">Map fields</h1>
@@ -601,7 +601,7 @@ export default function TryPage() {
 
       {/* ── Step 4: Email + generate ── */}
       {step === 4 && (
-        <div className="max-w-2xl">
+        <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
             <BackButton onClick={() => setStep(3)} />
             <h1 className="text-2xl font-black">Get your document</h1>
