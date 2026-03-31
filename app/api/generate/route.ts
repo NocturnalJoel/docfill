@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       };
 
       if (template.fileType === 'word') {
-        return await generateWordDocument(tmpFilePath, template.fileName, fieldMap, outputFormat);
+        return await generateWordDocument(tmpFilePath, template.fileName, fieldMap, outputFormat, template.fields);
       } else {
         return await generatePdfDocument(tmpFilePath, template.fileName, template.fields, fieldMap, underlinedFields);
       }
@@ -96,7 +96,8 @@ async function generateWordDocument(
   templateFilePath: string,
   originalFileName: string,
   fieldMap: Map<string, string>,
-  outputFormat?: 'docx' | 'pdf'
+  outputFormat?: 'docx' | 'pdf',
+  templateFields?: Array<{ fieldName: string; rectangle: { x: number; y: number; width: number; height: number; pageNumber: number } }>
 ) {
   const PizZip = (await import('pizzip')).default;
   const Docxtemplater = (await import('docxtemplater')).default;
@@ -104,9 +105,21 @@ async function generateWordDocument(
   const content = fs.readFileSync(templateFilePath, 'binary');
   const zip = new PizZip(content);
 
+  // Deduplicate fieldMap (stores both "Name" and "name") — one entry per field.
+  const seenNorm1 = new Set<string>();
+  const step1Entries: Array<[string, string]> = [];
+  for (const [k, v] of fieldMap.entries()) {
+    const norm = k.toLowerCase();
+    if (!seenNorm1.has(norm)) { seenNorm1.add(norm); step1Entries.push([k, v]); }
+  }
+
+  // Track which field names were successfully matched by Steps 1/1b so Step 1c
+  // knows which ones to inject as {{placeholders}} for docxtemplater to fill.
+  const matchedFields = new Set<string>();
+
   // Step 1: Direct XML label replacement for "Label :" style fields
   let xmlContent = zip.files['word/document.xml']?.asText() || '';
-  fieldMap.forEach((value, fieldName) => {
+  for (const [fieldName, value] of step1Entries) {
     const xmlLabel = fieldName
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const reLabel = xmlLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -118,7 +131,8 @@ async function generateWordDocument(
     const after1 = xmlContent.replace(sameElemRe, `$1$2 ${value}$3`);
     if (after1 !== xmlContent) {
       xmlContent = after1;
-      return;
+      matchedFields.add(fieldName.toLowerCase());
+      continue;
     }
 
     const crossRunRe = new RegExp(
@@ -144,49 +158,76 @@ async function generateWordDocument(
     );
     if (after2 !== xmlContent) {
       xmlContent = after2;
-      return;
+      matchedFields.add(fieldName.toLowerCase());
+      continue;
     }
 
     const fallbackRe = new RegExp(
       `(<w:t(?:\\s[^>]*)?>)(${reLabel}\\s*:)\\s*(</w:t>)`,
       'gi'
     );
-    xmlContent = xmlContent.replace(fallbackRe, `$1$2 ${value}$3`);
-  });
-  // Step 1b: Paragraph-level fallback for labels split across multiple <w:r> runs.
-  // Concatenate all <w:t> text in each paragraph; if it matches "FieldName:" (with optional
-  // trailing underscores), append the value as a new run. This handles the common Word XML
-  // pattern where "First Name:" is stored in separate runs and the per-element regex above missed it.
-  {
-    // Deduplicate fieldMap keys (it has both "Name" and "name") — use one entry per field
-    const seenNorm2 = new Set<string>();
-    const uniqueEntries: Array<[string, string]> = [];
-    for (const [k, v] of fieldMap.entries()) {
-      const norm = k.toLowerCase();
-      if (!seenNorm2.has(norm)) { seenNorm2.add(norm); uniqueEntries.push([k, v]); }
+    const after3 = xmlContent.replace(fallbackRe, `$1$2 ${value}$3`);
+    if (after3 !== xmlContent) {
+      matchedFields.add(fieldName.toLowerCase());
+      xmlContent = after3;
     }
-
-    xmlContent = xmlContent.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, (para) => {
-      // Concatenate all <w:t> text content within this paragraph
-      const paraText: string[] = [];
-      const tRe = /<w:t[^>]*>([^<]*)<\/w:t>/g;
-      let tm: RegExpExecArray | null;
-      while ((tm = tRe.exec(para)) !== null) {
-        paraText.push(tm[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
-      }
-      const fullText = paraText.join('').trim();
-      if (!fullText) return para;
-
-      for (const [fieldName, value] of uniqueEntries) {
-        const esc = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // Match "FieldName:" or "FieldName: ___..." — must have colon, trailing underscores OK
-        if (new RegExp(`^${esc}\\s*:\\s*_*\\s*$`, 'i').test(fullText)) {
-          return para.replace(/<\/w:p>/, `<w:r><w:t xml:space="preserve"> ${value}</w:t></w:r></w:p>`);
-        }
-      }
-      return para;
-    });
   }
+
+  // Step 1b: Paragraph-level fallback for labels split across multiple <w:r> runs.
+  xmlContent = xmlContent.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, (para) => {
+    const paraText: string[] = [];
+    const tRe = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+    let tm: RegExpExecArray | null;
+    while ((tm = tRe.exec(para)) !== null) {
+      paraText.push(tm[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
+    }
+    const fullText = paraText.join('').trim();
+    if (!fullText) return para;
+
+    for (const [fieldName, value] of step1Entries) {
+      if (matchedFields.has(fieldName.toLowerCase())) continue;
+      const esc = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp(`^${esc}\\s*:\\s*_*\\s*$`, 'i').test(fullText)) {
+        matchedFields.add(fieldName.toLowerCase());
+        return para.replace(/<\/w:p>/, `<w:r><w:t xml:space="preserve"> ${value}</w:t></w:r></w:p>`);
+      }
+    }
+    return para;
+  });
+
+  // Step 1c: For fields that weren't matched by label patterns (e.g. a manually drawn
+  // rectangle over an empty area), insert the value as an absolutely-positioned frame
+  // paragraph at the rectangle's coordinates using <w:framePr>.
+  // Read page dimensions from <w:pgSz> (twips: 1 inch = 1440 twips); default = US Letter.
+  {
+    const pgSzM = xmlContent.match(/<w:pgSz[^/]*?w:w="(\d+)"[^/]*?w:h="(\d+)"/);
+    const pageW = pgSzM ? parseInt(pgSzM[1]) : 12240; // 8.5"
+    const pageH = pgSzM ? parseInt(pgSzM[2]) : 15840; // 11"
+
+    for (const [fieldName, value] of step1Entries) {
+      if (matchedFields.has(fieldName.toLowerCase())) continue;
+      // If the doc already has {{fieldName}}, let docxtemplater handle it in Step 2
+      if (xmlContent.includes(`{{${fieldName}}}`)) continue;
+
+      const tf = templateFields?.find(t => t.fieldName.toLowerCase() === fieldName.toLowerCase());
+      const escapedVal = value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      let para: string;
+      if (tf?.rectangle) {
+        const r = tf.rectangle;
+        const xTw = Math.round(r.x * pageW);
+        const yTw = Math.round(r.y * pageH);
+        const wTw = Math.max(Math.round(r.width * pageW), 720);
+        const hTw = Math.max(Math.round(r.height * pageH), 360);
+        para = `<w:p><w:pPr><w:framePr w:w="${wTw}" w:h="${hTw}" w:hSpace="0" w:vSpace="0" w:wrap="none" w:hAnchor="page" w:vAnchor="page" w:x="${xTw}" w:y="${yTw}"/><w:jc w:val="center"/></w:pPr><w:r><w:t xml:space="preserve">${escapedVal}</w:t></w:r></w:p>`;
+      } else {
+        // No rectangle — append as a plain paragraph at end
+        para = `<w:p><w:r><w:t xml:space="preserve">${escapedVal}</w:t></w:r></w:p>`;
+      }
+      xmlContent = xmlContent.replace('</w:body>', para + '</w:body>');
+    }
+  }
+
   zip.file('word/document.xml', xmlContent);
 
   // Step 2: docxtemplater for {{placeholder}} style fields

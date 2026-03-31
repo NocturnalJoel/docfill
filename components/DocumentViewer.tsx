@@ -568,7 +568,6 @@ function WordDocumentViewer({
   hideSave = false,
 }: WordViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 680, height: 900 });
 
@@ -768,67 +767,69 @@ function WordDocumentViewer({
         </button>
       </div>
 
-      {/* Document + Overlay — capped at page width so it doesn't stretch full-screen */}
-      <div ref={scrollContainerRef} className="relative border border-gray-200 rounded-lg bg-white max-w-[680px] mx-auto">
-        {/* Rendered HTML */}
-        <div
-          ref={containerRef}
-          className="p-8 prose max-w-none min-h-[600px]"
-          dangerouslySetInnerHTML={{ __html: html }}
-          style={{ fontFamily: 'Georgia, serif', fontSize: '14px', lineHeight: 1.6 }}
-        />
+      {/* Document + Overlay — gray page-view background with a centered white page */}
+      <div className="bg-gray-100 rounded-lg py-6">
+        <div className="relative bg-white shadow-md mx-auto" style={{ width: 680, minHeight: 880 }}>
+          {/* Rendered HTML */}
+          <div
+            ref={containerRef}
+            className="p-10 prose max-w-none"
+            dangerouslySetInnerHTML={{ __html: html }}
+            style={{ fontFamily: 'Arial, sans-serif', fontSize: '14px', lineHeight: 1.5, minHeight: 880 }}
+          />
 
-        {/* Overlay — explicit height so it covers full content, not just the clipped 70vh */}
-        <div
-          ref={overlayRef}
-          className="absolute top-0 left-0 w-full"
-          style={{ height: containerSize.height, cursor: isAddingField ? 'crosshair' : 'default', pointerEvents: isAddingField ? 'auto' : 'none' }}
-          onMouseDown={onMouseDown}
-          onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp}
-        >
-          {drawState && (
-            <div
-              className="absolute pointer-events-none border-2 border-dashed border-blue-400 bg-blue-100/20"
-              style={{
-                left: Math.min(drawState.startX, drawState.currentX),
-                top: Math.min(drawState.startY, drawState.currentY),
-                width: Math.abs(drawState.currentX - drawState.startX),
-                height: Math.abs(drawState.currentY - drawState.startY),
-              }}
-            />
-          )}
-        </div>
+          {/* Overlay */}
+          <div
+            ref={overlayRef}
+            className="absolute top-0 left-0 w-full"
+            style={{ height: containerSize.height, cursor: isAddingField ? 'crosshair' : 'default', pointerEvents: isAddingField ? 'auto' : 'none' }}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+          >
+            {drawState && (
+              <div
+                className="absolute pointer-events-none border-2 border-dashed border-blue-400 bg-blue-100/20"
+                style={{
+                  left: Math.min(drawState.startX, drawState.currentX),
+                  top: Math.min(drawState.startY, drawState.currentY),
+                  width: Math.abs(drawState.currentX - drawState.startX),
+                  height: Math.abs(drawState.currentY - drawState.startY),
+                }}
+              />
+            )}
+          </div>
 
-        {/* Field rectangles (always visible, not blocked by overlay) */}
-        <div className="absolute top-0 left-0 w-full pointer-events-none" style={{ height: containerSize.height }}>
-          <div className="relative w-full h-full" style={{ pointerEvents: isAddingField ? 'none' : 'auto' }}>
-            {(fields as Array<DetectedField | TemplateField>).map((field) => {
-              const r = field.rectangle;
-              return (
-                <FieldRectangle
-                  key={field.id}
-                  id={field.id}
-                  fieldName={field.fieldName}
-                  value={mode === 'client' ? (field as DetectedField).value : undefined}
-                  color={field.color}
-                  confirmed={mode === 'client' ? (field as DetectedField).confirmed : true}
-                  x={r.x * containerSize.width}
-                  y={r.y * containerSize.height}
-                  width={r.width * containerSize.width}
-                  height={r.height * containerSize.height}
-                  onMove={(id, px, py) => onFieldMove(id, px, py, 1)}
-                  onResize={(id, px, py, pw, ph) => onFieldResize(id, px, py, pw, ph, 1)}
-                  onDelete={onFieldDelete}
-                  onConfirm={mode === 'client' ? onFieldConfirm : undefined}
-                  onLabelChange={onLabelChange}
-                  onValueChange={onValueChange}
-                  mode={mode}
-                  containerWidth={containerSize.width}
-                  containerHeight={containerSize.height}
-                />
-              );
-            })}
+          {/* Field rectangles (always visible, not blocked by overlay) */}
+          <div className="absolute top-0 left-0 w-full pointer-events-none" style={{ height: containerSize.height }}>
+            <div className="relative w-full h-full" style={{ pointerEvents: isAddingField ? 'none' : 'auto' }}>
+              {(fields as Array<DetectedField | TemplateField>).map((field) => {
+                const r = field.rectangle;
+                return (
+                  <FieldRectangle
+                    key={field.id}
+                    id={field.id}
+                    fieldName={field.fieldName}
+                    value={mode === 'client' ? (field as DetectedField).value : undefined}
+                    color={field.color}
+                    confirmed={mode === 'client' ? (field as DetectedField).confirmed : true}
+                    x={r.x * containerSize.width}
+                    y={r.y * containerSize.height}
+                    width={r.width * containerSize.width}
+                    height={r.height * containerSize.height}
+                    onMove={(id, px, py) => onFieldMove(id, px, py, 1)}
+                    onResize={(id, px, py, pw, ph) => onFieldResize(id, px, py, pw, ph, 1)}
+                    onDelete={onFieldDelete}
+                    onConfirm={mode === 'client' ? onFieldConfirm : undefined}
+                    onLabelChange={onLabelChange}
+                    onValueChange={onValueChange}
+                    mode={mode}
+                    containerWidth={containerSize.width}
+                    containerHeight={containerSize.height}
+                  />
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
