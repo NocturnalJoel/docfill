@@ -217,10 +217,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* DEV ONLY — remove before launch */}
-      {/* DEV ONLY — remove before launch */}
-      <DevOverlay />
-
       {/* Footer */}
       <footer className="border-t border-black/10 py-8">
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-black/40">
@@ -327,21 +323,3 @@ function ScreenshotCarousel() {
   );
 }
 
-function DevOverlay() {
-  return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end">
-      <a
-        href="/api/dev-init"
-        className="flex items-center gap-2 px-3 py-2 bg-white border border-black/20 text-black text-xs rounded-lg hover:bg-black/5 transition-colors shadow-sm"
-      >
-        Dev Preview + Seed Data
-      </a>
-      <a
-        href="/api/dev-bypass"
-        className="flex items-center gap-2 px-3 py-2 bg-black/80 text-white text-xs rounded-lg hover:bg-black transition-colors"
-      >
-        Dev Preview (no seed)
-      </a>
-    </div>
-  );
-}
