@@ -78,11 +78,13 @@ export async function POST(request: NextRequest) {
         fields: tmpl.fields ?? [],
       };
 
-      if (template.fileType === 'word') {
-        return await generateWordDocument(tmpFilePath, template.fileName, fieldMap, outputFormat, template.fields);
-      } else {
-        return await generatePdfDocument(tmpFilePath, template.fileName, template.fields, fieldMap, underlinedFields);
-      }
+      // WORD SUPPORT - PRESERVED FOR FUTURE USE
+      // if (template.fileType === 'word') {
+      //   return await generateWordDocument(tmpFilePath, template.fileName, fieldMap, outputFormat, template.fields);
+      // } else {
+      //   return await generatePdfDocument(tmpFilePath, template.fileName, template.fields, fieldMap, underlinedFields);
+      // }
+      return await generatePdfDocument(tmpFilePath, template.fileName, template.fields, fieldMap, underlinedFields);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

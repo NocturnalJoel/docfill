@@ -5,10 +5,10 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import {
   Upload, ArrowRight, ArrowLeft, Loader2, CheckCircle,
-  Plus, Trash2, FileText, File, Check, ChevronRight, AlertCircle,
+  Plus, Trash2, FileText, Check, ChevronRight, AlertCircle,
 } from 'lucide-react';
 import { matchFields, getFieldColor } from '@/lib/utils';
-import { detectPdfClientFields, PdfTextItem } from '@/lib/pdf-fields';
+import { detectPdfClientFields, detectPdfTemplateFields, PdfTextItem } from '@/lib/pdf-fields';
 import { v4 as uuidv4 } from 'uuid';
 import type { DetectedField, TemplateField } from '@/lib/types';
 
@@ -39,7 +39,6 @@ export default function TryPage() {
   // Step 1 & 2 state
   const [clientFile, setClientFile] = useState<File | null>(null);
   const [detectedFields, setDetectedFields] = useState<DetectedField[]>([]);
-  const [wordHtml, setWordHtml] = useState('');
   const [clientFileUrl, setClientFileUrl] = useState<string | null>(null);
   const [isParsingClient, setIsParsingClient] = useState(false);
   const [clientError, setClientError] = useState<string | null>(null);
@@ -48,29 +47,24 @@ export default function TryPage() {
 
   // Step 3 state
   const [templateFile, setTemplateFile] = useState<File | null>(null);
+  const [templateFileUrl, setTemplateFileUrl] = useState<string | null>(null);
   const [templateFields, setTemplateFields] = useState<TemplateField[]>([]);
-  const [templateHtml, setTemplateHtml] = useState('');
   const [isParsingTemplate, setIsParsingTemplate] = useState(false);
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [isDraggingTemplate, setIsDraggingTemplate] = useState(false);
   const templateFileRef = useRef<HTMLInputElement>(null);
   const [mappingRows, setMappingRows] = useState<MappingRow[]>([]);
-  const [templateContainerSize, setTemplateContainerSize] = useState({ width: 680, height: 900 });
 
   // Step 4 state
   const [email, setEmail] = useState('');
-  const [format, setFormat] = useState<'docx' | 'pdf'>('docx');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
 
-  // ── Step 1: parse client doc ───────────────────────────────────────────────
+  // ── Step 1: parse client PDF ───────────────────────────────────────────────
   const handleClientFile = useCallback(async (f: File) => {
-    const name = f.name.toLowerCase();
-    const isPdf = name.endsWith('.pdf');
-    const isDocx = name.endsWith('.docx');
-    if (!isPdf && !isDocx) {
-      setClientError('Please upload a PDF or Word (.docx) document.');
+    if (!f.name.toLowerCase().endsWith('.pdf')) {
+      setClientError('Please upload a PDF document.');
       return;
     }
     setClientError(null);
@@ -78,50 +72,35 @@ export default function TryPage() {
     setIsParsingClient(true);
 
     try {
-      if (isPdf) {
-        const { pdfjs } = await import('react-pdf');
-        pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+      const { pdfjs } = await import('react-pdf');
+      pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-        const arrayBuffer = await f.arrayBuffer();
-        const pdf = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-        const textItems: PdfTextItem[] = [];
+      const arrayBuffer = await f.arrayBuffer();
+      const pdf = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      const textItems: PdfTextItem[] = [];
 
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          const page = await pdf.getPage(pageNum);
-          const viewport = page.getViewport({ scale: 1 });
-          const textContent = await page.getTextContent();
-          for (const item of textContent.items) {
-            if (!('str' in item) || !(item as { str: string }).str.trim()) continue;
-            const it = item as { str: string; width: number; height: number; transform: number[] };
-            const [, , , , tx, ty] = it.transform;
-            textItems.push({
-              str: it.str,
-              x: tx / viewport.width,
-              y: 1 - (ty + it.height) / viewport.height,
-              width: it.width / viewport.width,
-              height: it.height / viewport.height,
-              pageNumber: pageNum,
-            });
-          }
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1 });
+        const textContent = await page.getTextContent();
+        for (const item of textContent.items) {
+          if (!('str' in item) || !(item as { str: string }).str.trim()) continue;
+          const it = item as { str: string; width: number; height: number; transform: number[] };
+          const [, , , , tx, ty] = it.transform;
+          textItems.push({
+            str: it.str,
+            x: tx / viewport.width,
+            y: 1 - (ty + it.height) / viewport.height,
+            width: it.width / viewport.width,
+            height: it.height / viewport.height,
+            pageNumber: pageNum,
+          });
         }
-
-        const fields = detectPdfClientFields(textItems);
-        setDetectedFields(fields);
-        setClientFileUrl(URL.createObjectURL(f));
-      } else {
-        const form = new FormData();
-        form.append('file', f);
-        const res = await fetch('/api/try/parse-client', { method: 'POST', body: form });
-        const data = await res.json();
-        if (!res.ok) {
-          setClientError(data.error ?? 'Failed to parse document.');
-          setIsParsingClient(false);
-          return;
-        }
-        setDetectedFields(data.fields ?? []);
-        setWordHtml(data.html ?? '');
       }
 
+      const fields = detectPdfClientFields(textItems);
+      setDetectedFields(fields);
+      setClientFileUrl(URL.createObjectURL(f));
       setStep(2);
     } catch (e) {
       console.error('Client parse error:', e);
@@ -131,33 +110,54 @@ export default function TryPage() {
     }
   }, []);
 
-  // ── Step 3: parse template ─────────────────────────────────────────────────
+  // WORD SUPPORT - PRESERVED FOR FUTURE USE
+  // The DOCX client document branch was removed. To re-enable:
+  //   1. Add isDocx check: const isDocx = name.endsWith('.docx');
+  //   2. Accept '.pdf,.docx' in the file input
+  //   3. For DOCX files: POST to /api/try/parse-client, set wordHtml from response
+  //   4. Add wordHtml state, pass to DocumentViewer in step 2
+  //   5. Re-enable /api/try/parse-client/route.ts
+
+  // ── Step 3: parse template PDF ─────────────────────────────────────────────
   const handleTemplateFile = useCallback(async (f: File) => {
-    if (!f.name.toLowerCase().endsWith('.docx')) {
-      setTemplateError('Please upload a Word (.docx) template.');
+    if (!f.name.toLowerCase().endsWith('.pdf')) {
+      setTemplateError('Please upload a PDF template.');
       return;
     }
     setTemplateError(null);
     setTemplateFile(f);
-    setFormat(f.name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'docx');
     setIsParsingTemplate(true);
 
     try {
-      const form = new FormData();
-      form.append('file', f);
-      const res = await fetch('/api/try/parse', { method: 'POST', body: form });
-      const data = await res.json();
+      const { pdfjs } = await import('react-pdf');
+      pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-      if (!res.ok) {
-        setTemplateError(data.error ?? 'Failed to parse template.');
-        setTemplateFile(null);
-        setIsParsingTemplate(false);
-        return;
+      const arrayBuffer = await f.arrayBuffer();
+      const pdf = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      const textItems: PdfTextItem[] = [];
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1 });
+        const textContent = await page.getTextContent();
+        for (const item of textContent.items) {
+          if (!('str' in item) || !(item as { str: string }).str.trim()) continue;
+          const it = item as { str: string; width: number; height: number; transform: number[] };
+          const [, , , , tx, ty] = it.transform;
+          textItems.push({
+            str: it.str,
+            x: tx / viewport.width,
+            y: 1 - (ty + it.height) / viewport.height,
+            width: it.width / viewport.width,
+            height: it.height / viewport.height,
+            pageNumber: pageNum,
+          });
+        }
       }
 
-      const tfFields: TemplateField[] = data.fields ?? [];
+      const tfFields = detectPdfTemplateFields(textItems);
       setTemplateFields(tfFields);
-      setTemplateHtml(data.html ?? '');
+      setTemplateFileUrl(URL.createObjectURL(f));
 
       const tfNames = tfFields.map((tf) => tf.fieldName);
       const clientFieldNames = detectedFields.filter((f) => f.fieldName.trim()).map((f) => f.fieldName);
@@ -169,7 +169,6 @@ export default function TryPage() {
         tfFields.map((tf) => {
           const matched = autoMatch[tf.fieldName] || '';
           const clientField = detectedFields.find((f) => f.fieldName === matched);
-          // Use the TemplateField's id as the row id so they stay in sync
           return { id: tf.id, templateField: tf.fieldName, clientFieldName: matched, value: clientField?.value || '' };
         })
       );
@@ -180,6 +179,11 @@ export default function TryPage() {
       setIsParsingTemplate(false);
     }
   }, [detectedFields]);
+
+  // WORD SUPPORT - PRESERVED FOR FUTURE USE
+  // Word template parsing was previously done server-side via /api/try/parse.
+  // To re-enable: POST file to /api/try/parse, get back { fields, html },
+  // set templateHtml state and pass to DocumentViewer with fileType="word".
 
   // ── Mapping helpers ────────────────────────────────────────────────────────
   const updateMappingRow = (id: string, key: keyof MappingRow, val: string) => {
@@ -234,17 +238,13 @@ export default function TryPage() {
           return {
             fieldName: r.templateField,
             value: r.value,
-            placeholder: tf?.placeholder ?? '',
             rectangle: tf?.rectangle ?? null,
-            containerWidth: templateContainerSize.width,
-            containerHeight: templateContainerSize.height,
           };
         });
 
       const form = new FormData();
       form.append('file', templateFile);
       form.append('email', email);
-      form.append('format', format);
       form.append('fields', JSON.stringify(fields));
 
       const res = await fetch('/api/try/generate', { method: 'POST', body: form });
@@ -259,7 +259,7 @@ export default function TryPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `filled_document.${format}`;
+      a.download = `filled_document.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       setIsDone(true);
@@ -318,12 +318,12 @@ export default function TryPage() {
         <div className="max-w-2xl mx-auto">
           <h1 className="text-2xl font-black mb-1">Upload client document</h1>
           <p className="text-black/50 mb-8">
-            Drop in the document that contains your client&apos;s information — PDF or Word. We&apos;ll detect every field automatically.
+            Drop in the PDF that contains your client&apos;s information. We&apos;ll detect every field automatically.
           </p>
 
           <DropZone
             label="Drop client document here"
-            sublabel=".pdf or .docx"
+            sublabel=".pdf only"
             isDragging={isDraggingClient}
             isLoading={isParsingClient}
             loadingLabel="Detecting fields..."
@@ -332,7 +332,7 @@ export default function TryPage() {
             onClick={() => clientFileRef.current?.click()}
           />
           <input
-            ref={clientFileRef} type="file" accept=".pdf,.docx" className="hidden"
+            ref={clientFileRef} type="file" accept=".pdf" className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleClientFile(f); }}
           />
 
@@ -353,7 +353,6 @@ export default function TryPage() {
               setStep(1);
               setClientFile(null);
               setDetectedFields([]);
-              setWordHtml('');
               setClientFileUrl(null);
             }} />
             <h1 className="text-2xl font-black">Review detected fields</h1>
@@ -367,8 +366,7 @@ export default function TryPage() {
 
           <DocumentViewer
             fileUrl={clientFileUrl ?? ''}
-            fileType={clientFileUrl ? 'pdf' : 'word'}
-            wordHtml={wordHtml || undefined}
+            fileType="pdf"
             fields={detectedFields}
             onFieldsChange={(fields) => setDetectedFields(fields as DetectedField[])}
             onSave={async (fields) => { setDetectedFields(fields as DetectedField[]); }}
@@ -471,12 +469,12 @@ export default function TryPage() {
             <h1 className="text-2xl font-black">Upload your template</h1>
           </div>
           <p className="text-black/50 text-sm mb-6 mt-2">
-            The Word document you want to fill in. We&apos;ll detect its fields and match them to your client data automatically.
+            The PDF you want to fill in. We&apos;ll detect its fields and match them to your client data automatically.
           </p>
 
           <DropZone
-            label="Drop Word template here"
-            sublabel=".docx only"
+            label="Drop PDF template here"
+            sublabel=".pdf only"
             isDragging={isDraggingTemplate}
             isLoading={isParsingTemplate}
             loadingLabel="Detecting template fields..."
@@ -485,7 +483,7 @@ export default function TryPage() {
             onClick={() => templateFileRef.current?.click()}
           />
           <input
-            ref={templateFileRef} type="file" accept=".docx" className="hidden"
+            ref={templateFileRef} type="file" accept=".pdf" className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleTemplateFile(f); }}
           />
 
@@ -505,7 +503,7 @@ export default function TryPage() {
       {step === 3 && templateFile && !isParsingTemplate && (
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-3 mb-1">
-            <BackButton onClick={() => { setTemplateFile(null); setTemplateFields([]); setTemplateHtml(''); setMappingRows([]); }} />
+            <BackButton onClick={() => { setTemplateFile(null); setTemplateFields([]); setTemplateFileUrl(null); setMappingRows([]); }} />
             <h1 className="text-2xl font-black">Map fields</h1>
           </div>
           {templateFile && <FilePill name={templateFile.name} />}
@@ -514,18 +512,16 @@ export default function TryPage() {
             Reposition the field rectangles on your template if needed, then verify the value mappings below.
           </p>
 
-          {templateHtml && (
+          {templateFileUrl && (
             <div className="mb-8">
               <DocumentViewer
-                fileUrl=""
-                fileType="word"
-                wordHtml={templateHtml}
+                fileUrl={templateFileUrl}
+                fileType="pdf"
                 fields={templateFields}
                 onFieldsChange={(fields) => {
                   const tf = fields as TemplateField[];
                   setTemplateFields(tf);
                   setMappingRows((prev) => {
-                    // Sync by field name so re-detection (which regenerates ids) preserves auto-match
                     const byName = new Map(prev.map((r) => [r.templateField, r]));
                     return tf.map((f) => {
                       const existing = byName.get(f.fieldName);
@@ -540,7 +536,6 @@ export default function TryPage() {
                   setTemplateFields(tf);
                 }}
                 mode="template"
-                onContainerSize={(w, h) => setTemplateContainerSize({ width: w, height: h })}
               />
             </div>
           )}
@@ -636,7 +631,7 @@ export default function TryPage() {
             >
               {isGenerating
                 ? <><Loader2 size={16} className="animate-spin" />Generating...</>
-                : <>Generate & Download <ArrowRight size={16} /></>}
+                : <>Generate & Download PDF <ArrowRight size={16} /></>}
             </button>
           </form>
         </div>
@@ -711,10 +706,9 @@ function BackButton({ onClick }: { onClick: () => void }) {
 }
 
 function FilePill({ name }: { name: string }) {
-  const isPdf = name.toLowerCase().endsWith('.pdf');
   return (
     <div className="flex items-center gap-2 mt-1 mb-1">
-      {isPdf ? <FileText size={13} className="text-red-400" /> : <File size={13} className="text-blue-400" />}
+      <FileText size={13} className="text-red-400" />
       <span className="text-sm text-black/40">{name}</span>
     </div>
   );
@@ -728,3 +722,4 @@ function ErrorBox({ message }: { message: string }) {
     </div>
   );
 }
+

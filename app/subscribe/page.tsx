@@ -8,7 +8,7 @@ const included = [
   'Unlimited client documents',
   'Unlimited templates',
   'Unlimited clients',
-  'PDF & Word support',
+  'PDF support (Word coming soon)',
   'Visual field editor',
   'Smart auto-detection',
   'Instant document generation',
@@ -46,7 +46,7 @@ export default function SubscribePage() {
   };
 
   const isYearly = plan === 'yearly';
-  const monthlySavings = Math.round(((499 * 12 - 4999) / (499 * 12)) * 100);
+  const monthlySavings = Math.round(((99 * 12 - 1069) / (99 * 12)) * 100);
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -102,14 +102,14 @@ export default function SubscribePage() {
             <div className="mb-1">
               {isYearly ? (
                 <>
-                  <span className="text-6xl font-black">$4,999</span>
-                  <span className="text-white/40 text-lg ml-1">/year</span>
-                  <div className="text-white/30 text-sm mt-1 line-through">${(499 * 12).toLocaleString()}/year</div>
+                  <span className="text-6xl font-black">$1,069</span>
+                  <span className="text-white/40 text-lg ml-1">CAD/year</span>
+                  <div className="text-white/30 text-sm mt-1 line-through">$1,188 CAD/year</div>
                 </>
               ) : (
                 <>
-                  <span className="text-6xl font-black">$499</span>
-                  <span className="text-white/40 text-lg ml-1">/month</span>
+                  <span className="text-6xl font-black">$99</span>
+                  <span className="text-white/40 text-lg ml-1">CAD/month</span>
                 </>
               )}
             </div>
@@ -162,8 +162,8 @@ export default function SubscribePage() {
 
             <div className="mt-8 border border-black/10 rounded-xl p-4">
               <p className="text-xs text-black/40 leading-relaxed">
-                After subscribing you&apos;ll create your account and get instant access.
-                Cancel any time from your account settings — no questions asked.
+                After payment you&apos;ll create your account and get instant access.
+                {' Cancel any time from your account settings — no questions asked.'}
               </p>
             </div>
           </div>

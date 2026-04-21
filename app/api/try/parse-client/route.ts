@@ -1,27 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseWordDocument } from '@/lib/document-parser';
+// WORD SUPPORT - PRESERVED FOR FUTURE USE
+// import { parseWordDocument } from '@/lib/document-parser';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: NextRequest) {
-  try {
-    const formData = await request.formData();
-    const file = formData.get('file') as File | null;
+export async function POST(_request: NextRequest) {
+  // WORD SUPPORT - PRESERVED FOR FUTURE USE
+  // This route parsed Word (.docx) client documents server-side. PDF client documents
+  // are now parsed client-side using pdf.js + detectPdfClientFields in app/try/page.tsx.
+  // To re-enable Word client document support, restore the handler below:
+  //
+  // try {
+  //   const formData = await _request.formData();
+  //   const file = formData.get('file') as File | null;
+  //   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+  //   if (!file.name.toLowerCase().endsWith('.docx')) {
+  //     return NextResponse.json({ error: 'Only .docx files are supported here' }, { status: 400 });
+  //   }
+  //   const buffer = Buffer.from(await file.arrayBuffer());
+  //   const result = await parseWordDocument(buffer);
+  //   return NextResponse.json({ fields: result.fields, html: result.html, fileType: 'word' });
+  // } catch (err) {
+  //   console.error('Try parse-client error:', err);
+  //   return NextResponse.json({ error: 'Failed to parse document', details: String(err) }, { status: 500 });
+  // }
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
-    }
-
-    if (!file.name.toLowerCase().endsWith('.docx')) {
-      return NextResponse.json({ error: 'Only .docx files are supported here' }, { status: 400 });
-    }
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await parseWordDocument(buffer);
-    return NextResponse.json({ fields: result.fields, html: result.html, fileType: 'word' });
-  } catch (err) {
-    console.error('Try parse-client error:', err);
-    return NextResponse.json({ error: 'Failed to parse document', details: String(err) }, { status: 500 });
-  }
+  return NextResponse.json({ error: 'Word document parsing is not available. Please use a PDF.' }, { status: 400 });
 }

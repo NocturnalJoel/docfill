@@ -1,7 +1,7 @@
 // Client-safe PDF field detection — no server-only imports.
 // Mirrors detectPdfClientFields from document-parser.ts for use in browser components.
 
-import { DetectedField } from './types';
+import { DetectedField, TemplateField } from './types';
 import { getFieldColor } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -113,4 +113,114 @@ function isLabelText(text: string): boolean {
     text.length <= 40 &&
     /^[A-Za-z][A-Za-z\s/().#&-]*$/.test(text)
   );
+}
+
+// Detect blank/placeholder fields in a PDF template.
+// Looks for "Label: ___" patterns, standalone "Label:" items, and {{placeholder}} text.
+export function detectPdfTemplateFields(items: PdfTextItem[]): TemplateField[] {
+  const fields: TemplateField[] = [];
+
+  const byPage = new Map<number, PdfTextItem[]>();
+  for (const item of items) {
+    if (!byPage.has(item.pageNumber)) byPage.set(item.pageNumber, []);
+    byPage.get(item.pageNumber)!.push(item);
+  }
+
+  byPage.forEach((pageItems, pageNumber) => {
+    const handled = new Set<PdfTextItem>();
+
+    for (const item of pageItems) {
+      if (handled.has(item)) continue;
+      const text = item.str.trim();
+
+      // {{placeholder}} style
+      const mustacheRe = /\{\{([^}]+)\}\}/g;
+      let m: RegExpExecArray | null;
+      while ((m = mustacheRe.exec(text)) !== null) {
+        const fieldName = m[1].trim();
+        fields.push({
+          id: uuidv4(),
+          fieldName,
+          placeholder: `{{${fieldName}}}`,
+          rectangle: {
+            x: Math.max(0, item.x - 0.005),
+            y: Math.max(0, item.y - 0.003),
+            width: Math.max(0.1, item.width + 0.01),
+            height: Math.max(0.022, item.height + 0.008),
+            pageNumber,
+          },
+          color: getFieldColor(fields.length),
+        });
+        handled.add(item);
+      }
+      if (handled.has(item)) continue;
+
+      const colonIdx = text.indexOf(':');
+      if (colonIdx <= 1) continue;
+      const beforeColon = text.slice(0, colonIdx).trim();
+      const afterColon = text.slice(colonIdx + 1).trim();
+      if (!isLabelText(beforeColon)) continue;
+
+      // "Label: ___" in the same text item
+      if (/^_+$/.test(afterColon)) {
+        const splitRatio = (colonIdx + 1) / text.length;
+        const valueX = item.x + item.width * splitRatio;
+        const valueW = item.width * (1 - splitRatio);
+        fields.push({
+          id: uuidv4(),
+          fieldName: beforeColon,
+          placeholder: beforeColon,
+          rectangle: {
+            x: Math.max(0, valueX - 0.005),
+            y: Math.max(0, item.y - 0.003),
+            width: Math.max(0.1, valueW + 0.01),
+            height: Math.max(0.022, item.height + 0.008),
+            pageNumber,
+          },
+          color: getFieldColor(fields.length),
+        });
+        handled.add(item);
+        continue;
+      }
+
+      // Standalone "Label:" or "Label: " — look for nearby underscores
+      if (!afterColon || afterColon === '') {
+        const labelRight = item.x + item.width;
+        const yTol = Math.max(0.025, item.height * 2.5);
+        const underscoreItem = pageItems.find((v) =>
+          !handled.has(v) &&
+          v !== item &&
+          v.x >= labelRight - 0.01 &&
+          Math.abs(v.y - item.y) < yTol &&
+          /^_+$/.test(v.str.trim())
+        );
+        const rect = underscoreItem
+          ? {
+              x: Math.max(0, underscoreItem.x - 0.005),
+              y: Math.max(0, underscoreItem.y - 0.003),
+              width: Math.max(0.1, underscoreItem.width + 0.01),
+              height: Math.max(0.022, underscoreItem.height + 0.008),
+              pageNumber,
+            }
+          : {
+              x: Math.max(0, labelRight + 0.01),
+              y: Math.max(0, item.y - 0.003),
+              width: 0.25,
+              height: Math.max(0.022, item.height + 0.008),
+              pageNumber,
+            };
+        fields.push({
+          id: uuidv4(),
+          fieldName: beforeColon,
+          placeholder: beforeColon,
+          rectangle: rect,
+          color: getFieldColor(fields.length),
+        });
+        if (underscoreItem) handled.add(underscoreItem);
+        handled.add(item);
+      }
+    }
+  });
+
+  return fields;
 }

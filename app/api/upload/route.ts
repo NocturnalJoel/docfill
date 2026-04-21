@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { parseWordDocument } from '@/lib/document-parser';
+// WORD SUPPORT - PRESERVED FOR FUTURE USE
+// import { parseWordDocument } from '@/lib/document-parser';
 import { ClientDocument, Template } from '@/lib/types';
 import { isDevRequest } from '@/lib/dev';
 
@@ -21,15 +22,22 @@ export async function POST(request: NextRequest) {
     }
 
     const fileName = file.name;
-    const ext = fileName.toLowerCase().endsWith('.pdf') ? '.pdf'
-      : fileName.toLowerCase().endsWith('.docx') ? '.docx'
-      : null;
+    const ext = fileName.toLowerCase().endsWith('.pdf') ? '.pdf' : null;
+
+    // WORD SUPPORT - PRESERVED FOR FUTURE USE
+    // Uncomment the following line and remove the null assignment above to re-enable .docx:
+    // const ext = fileName.toLowerCase().endsWith('.pdf') ? '.pdf'
+    //   : fileName.toLowerCase().endsWith('.docx') ? '.docx'
+    //   : null;
 
     if (!ext) {
-      return NextResponse.json({ error: 'Only PDF and DOCX files are supported' }, { status: 400 });
+      return NextResponse.json({ error: 'Only PDF files are supported' }, { status: 400 });
     }
 
-    const fileType = ext === '.pdf' ? 'pdf' : 'word';
+    const fileType = 'pdf';
+    // WORD SUPPORT - PRESERVED FOR FUTURE USE
+    // const fileType = ext === '.pdf' ? 'pdf' : 'word';
+
     const id = uuidv4();
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -39,17 +47,17 @@ export async function POST(request: NextRequest) {
       const store = await import('@/lib/store');
 
       if (uploadType === 'template') {
-        let fields: Template['fields'] = [];
-        let pageCount = 1;
-        let wordHtml: string | undefined;
+        const fields: Template['fields'] = [];
+        const pageCount = 1;
 
-        if (fileType === 'word') {
-          const parsed = await parseWordDocument(buffer);
-          fields = parsed.templateFields;
-          pageCount = parsed.pageCount;
-          wordHtml = parsed.html;
-          store.saveHtmlFile(id, parsed.html);
-        }
+        // WORD SUPPORT - PRESERVED FOR FUTURE USE
+        // if (fileType === 'word') {
+        //   const parsed = await parseWordDocument(buffer);
+        //   fields = parsed.templateFields;
+        //   pageCount = parsed.pageCount;
+        //   wordHtml = parsed.html;
+        //   store.saveHtmlFile(id, parsed.html);
+        // }
 
         store.saveUploadedFile(id, buffer, ext);
         const template: Template = {
@@ -63,23 +71,23 @@ export async function POST(request: NextRequest) {
           pageCount,
         };
         store.createTemplate(template);
-        return NextResponse.json({ template, wordHtml });
+        return NextResponse.json({ template });
       } else {
         if (!clientId) {
           return NextResponse.json({ error: 'clientId is required for document uploads' }, { status: 400 });
         }
 
-        let fields: ClientDocument['fields'] = [];
-        let pageCount = 1;
-        let wordHtml: string | undefined;
+        const fields: ClientDocument['fields'] = [];
+        const pageCount = 1;
 
-        if (fileType === 'word') {
-          const parsed = await parseWordDocument(buffer);
-          fields = parsed.fields;
-          pageCount = parsed.pageCount;
-          wordHtml = parsed.html;
-          store.saveHtmlFile(id, parsed.html);
-        }
+        // WORD SUPPORT - PRESERVED FOR FUTURE USE
+        // if (fileType === 'word') {
+        //   const parsed = await parseWordDocument(buffer);
+        //   fields = parsed.fields;
+        //   pageCount = parsed.pageCount;
+        //   wordHtml = parsed.html;
+        //   store.saveHtmlFile(id, parsed.html);
+        // }
 
         store.saveUploadedFile(id, buffer, ext);
         const doc: ClientDocument = {
@@ -93,7 +101,7 @@ export async function POST(request: NextRequest) {
           pageCount,
         };
         store.createDocument(doc);
-        return NextResponse.json({ document: doc, wordHtml });
+        return NextResponse.json({ document: doc });
       }
     }
 
@@ -110,7 +118,9 @@ export async function POST(request: NextRequest) {
     const { error: uploadError } = await admin.storage
       .from('uploads')
       .upload(storagePath, buffer, {
-        contentType: ext === '.pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        contentType: 'application/pdf',
+        // WORD SUPPORT - PRESERVED FOR FUTURE USE
+        // contentType: ext === '.pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         upsert: false,
       });
 
@@ -119,23 +129,22 @@ export async function POST(request: NextRequest) {
     }
 
     if (uploadType === 'template') {
-      let fields: Template['fields'] = [];
-      let pageCount = 1;
-      let wordHtml: string | undefined;
+      const fields: Template['fields'] = [];
+      const pageCount = 1;
 
-      if (fileType === 'word') {
-        const parsed = await parseWordDocument(buffer);
-        fields = parsed.templateFields;
-        pageCount = parsed.pageCount;
-        wordHtml = parsed.html;
-
-        await admin.storage
-          .from('uploads')
-          .upload(`${user.id}/${id}.html`, Buffer.from(parsed.html, 'utf-8'), {
-            contentType: 'text/html; charset=utf-8',
-            upsert: false,
-          });
-      }
+      // WORD SUPPORT - PRESERVED FOR FUTURE USE
+      // if (fileType === 'word') {
+      //   const parsed = await parseWordDocument(buffer);
+      //   fields = parsed.templateFields;
+      //   pageCount = parsed.pageCount;
+      //   const wordHtml = parsed.html;
+      //   await admin.storage
+      //     .from('uploads')
+      //     .upload(`${user.id}/${id}.html`, Buffer.from(parsed.html, 'utf-8'), {
+      //       contentType: 'text/html; charset=utf-8',
+      //       upsert: false,
+      //     });
+      // }
 
       const template: Template = {
         id,
@@ -164,29 +173,28 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to save template', details: dbError.message }, { status: 500 });
       }
 
-      return NextResponse.json({ template, wordHtml });
+      return NextResponse.json({ template });
     } else {
       if (!clientId) {
         return NextResponse.json({ error: 'clientId is required for document uploads' }, { status: 400 });
       }
 
-      let fields: ClientDocument['fields'] = [];
-      let pageCount = 1;
-      let wordHtml: string | undefined;
+      const fields: ClientDocument['fields'] = [];
+      const pageCount = 1;
 
-      if (fileType === 'word') {
-        const parsed = await parseWordDocument(buffer);
-        fields = parsed.fields;
-        pageCount = parsed.pageCount;
-        wordHtml = parsed.html;
-
-        await admin.storage
-          .from('uploads')
-          .upload(`${user.id}/${id}.html`, Buffer.from(parsed.html, 'utf-8'), {
-            contentType: 'text/html; charset=utf-8',
-            upsert: false,
-          });
-      }
+      // WORD SUPPORT - PRESERVED FOR FUTURE USE
+      // if (fileType === 'word') {
+      //   const parsed = await parseWordDocument(buffer);
+      //   fields = parsed.fields;
+      //   pageCount = parsed.pageCount;
+      //   const wordHtml = parsed.html;
+      //   await admin.storage
+      //     .from('uploads')
+      //     .upload(`${user.id}/${id}.html`, Buffer.from(parsed.html, 'utf-8'), {
+      //       contentType: 'text/html; charset=utf-8',
+      //       upsert: false,
+      //     });
+      // }
 
       const doc: ClientDocument = {
         id,
@@ -215,7 +223,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to save document', details: dbError.message }, { status: 500 });
       }
 
-      return NextResponse.json({ document: doc, wordHtml });
+      return NextResponse.json({ document: doc });
     }
   } catch (err) {
     console.error('Upload error:', err);

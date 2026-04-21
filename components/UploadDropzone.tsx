@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { Upload, FileText, File } from 'lucide-react';
+import { Upload, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface UploadDropzoneProps {
@@ -14,8 +14,8 @@ interface UploadDropzoneProps {
 
 export default function UploadDropzone({
   onUpload,
-  accept = '.pdf,.docx',
-  label = 'Drop PDF or DOCX here, or click to browse',
+  accept = '.pdf',
+  label = 'Drop PDF here, or click to browse',
   disabled = false,
   className,
 }: UploadDropzoneProps) {
@@ -26,8 +26,8 @@ export default function UploadDropzone({
     (file: File) => {
       setError(null);
       const name = file.name.toLowerCase();
-      if (!name.endsWith('.pdf') && !name.endsWith('.docx')) {
-        setError('Only PDF and DOCX files are supported');
+      if (!name.endsWith('.pdf')) {
+        setError('Only PDF files are supported');
         return;
       }
       onUpload(file);
@@ -72,10 +72,9 @@ export default function UploadDropzone({
         <div className="flex items-center gap-2 text-black/40">
           <Upload size={20} />
           <FileText size={18} className="text-red-400" />
-          <File size={18} className="text-blue-400" />
         </div>
         <span className="text-sm text-black/60 text-center">{label}</span>
-        <span className="text-xs text-black/30">PDF or DOCX files</span>
+        <span className="text-xs text-black/30">PDF files only</span>
         <input
           type="file"
           accept={accept}

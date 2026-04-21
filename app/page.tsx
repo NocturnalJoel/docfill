@@ -88,7 +88,7 @@ export default function LandingPage() {
                 step: '01',
                 icon: Users,
                 title: 'Read your client documents',
-                desc: 'Drop in a PDF or Word doc. PaperworkSlayer detects every name, address, date, and field automatically — no guessing. See every field highlighted on the document and adjust, rename, or confirm with a click. What you see is what gets used.',
+                desc: 'Drop in a PDF. PaperworkSlayer detects every name, address, date, and field automatically — no guessing. See every field highlighted on the document and adjust, rename, or confirm with a click. What you see is what gets used.',
               },
               {
                 step: '02',
@@ -128,7 +128,7 @@ export default function LandingPage() {
           </div>
           <div className="grid md:grid-cols-2 gap-x-20 gap-y-12">
             {[
-              { icon: FileText, title: 'PDF & Word Support', desc: 'Works with PDFs and Word docs out of the box. No converting, no reformatting.' },
+              { icon: FileText, title: 'PDF Support', desc: 'Works with PDFs out of the box. Word document support coming soon.' },
               { icon: Eye, title: 'Visual Field Editor', desc: 'See exactly what was detected on any document — client or template. Drag and resize fields directly on the page.' },
               { icon: Zap, title: 'Smart Auto-Detection', desc: 'Finds names, dates, addresses, and blank fields automatically — on both client documents and your own templates. No AI involved. Pattern matching only.' },
               { icon: Users, title: 'Client Management', desc: "Every client's documents in one place. Search, filter, done." },
