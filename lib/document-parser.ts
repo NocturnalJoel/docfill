@@ -537,6 +537,48 @@ export function detectPdfTemplateFields(items: PdfTextItem[]): TemplateField[] {
         }
       }
     }
+
+    // --- Pass 3: uppercase label above value area (notarial/legal form style) ---
+    // e.g. "FULL LEGAL NAME" on one line, blank or value on the next line
+    {
+      const aboveLabelIdxs = new Set<number>();
+      for (let i = 0; i < pageItems.length; i++) {
+        const text = pageItems[i].str.trim();
+        if (text.length < 3 || text.length > 80) continue;
+        if (text !== text.toUpperCase()) continue;
+        const letterCount = (text.match(/[A-Za-z]/g) || []).length;
+        if (letterCount >= 4) aboveLabelIdxs.add(i);
+      }
+
+      for (const labelIdx of aboveLabelIdxs) {
+        const label = pageItems[labelIdx];
+        const fieldName = label.str.trim();
+        if (seenFieldNames.has(fieldName.toLowerCase())) continue;
+
+        const yGap = Math.max(0.06, label.height * 5);
+
+        // Find the closest item below the label (underscores, value text, or nothing)
+        const candidates: Array<PdfTextItem> = [];
+        for (let i = 0; i < pageItems.length; i++) {
+          if (aboveLabelIdxs.has(i) || i === labelIdx) continue;
+          const v = pageItems[i];
+          if (!v.str.trim()) continue;
+          if (v.y <= label.y || v.y - label.y > yGap) continue;
+          const labelRight = label.x + label.width;
+          const vRight = v.x + v.width;
+          if (v.x > labelRight + 0.05 || vRight < label.x - 0.05) continue;
+          candidates.push(v);
+        }
+
+        candidates.sort((a, b) => a.y - b.y);
+
+        const rectItem = candidates.length > 0
+          ? candidates[0]
+          : { ...label, y: label.y + Math.max(0.02, label.height * 2), width: Math.max(0.25, label.width), height: 0.025 };
+
+        addField(fieldName, fieldName, rectItem, Math.max(0.2, rectItem.width));
+      }
+    }
   });
 
   return fields;

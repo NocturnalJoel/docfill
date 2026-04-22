@@ -289,6 +289,58 @@ export function detectPdfTemplateFields(items: PdfTextItem[]): TemplateField[] {
         handled.add(item);
       }
     }
+
+    // Pass 3: uppercase label above value area (notarial/legal form style)
+    {
+      const aboveLabelItems = new Set<PdfTextItem>();
+      for (const item of pageItems) {
+        if (handled.has(item)) continue;
+        const text = item.str.trim();
+        if (text.length < 3 || text.length > 80) continue;
+        if (text !== text.toUpperCase()) continue;
+        const letterCount = (text.match(/[A-Za-z]/g) || []).length;
+        if (letterCount >= 4) aboveLabelItems.add(item);
+      }
+
+      const seenNames = new Set(fields.map((f) => f.fieldName.toLowerCase()));
+
+      for (const label of aboveLabelItems) {
+        const fieldName = label.str.trim();
+        if (seenNames.has(fieldName.toLowerCase())) continue;
+
+        const yGap = Math.max(0.06, label.height * 5);
+
+        const candidates = pageItems.filter((v) => {
+          if (aboveLabelItems.has(v) || v === label || handled.has(v)) return false;
+          if (!v.str.trim()) return false;
+          if (v.y <= label.y || v.y - label.y > yGap) return false;
+          const labelRight = label.x + label.width;
+          const vRight = v.x + v.width;
+          return v.x <= labelRight + 0.05 && vRight >= label.x - 0.05;
+        });
+
+        candidates.sort((a, b) => a.y - b.y);
+
+        const rectItem = candidates.length > 0
+          ? candidates[0]
+          : { ...label, y: label.y + Math.max(0.02, label.height * 2), width: Math.max(0.25, label.width), height: 0.025 };
+
+        fields.push({
+          id: uuidv4(),
+          fieldName,
+          placeholder: fieldName,
+          rectangle: {
+            x: Math.max(0, rectItem.x - 0.005),
+            y: Math.max(0, rectItem.y - 0.003),
+            width: Math.max(0.2, rectItem.width + 0.01),
+            height: Math.max(0.022, rectItem.height + 0.008),
+            pageNumber,
+          },
+          color: getFieldColor(fields.length),
+        });
+        seenNames.add(fieldName.toLowerCase());
+      }
+    }
   });
 
   return fields;
