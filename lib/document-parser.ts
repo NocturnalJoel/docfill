@@ -557,7 +557,6 @@ export function detectPdfTemplateFields(items: PdfTextItem[]): TemplateField[] {
 
         const yGap = Math.max(0.06, label.height * 5);
 
-        // Find the closest item below the label (underscores, value text, or nothing)
         const candidates: Array<PdfTextItem> = [];
         for (let i = 0; i < pageItems.length; i++) {
           if (aboveLabelIdxs.has(i) || i === labelIdx) continue;
@@ -572,11 +571,32 @@ export function detectPdfTemplateFields(items: PdfTextItem[]): TemplateField[] {
 
         candidates.sort((a, b) => a.y - b.y);
 
-        const rectItem = candidates.length > 0
-          ? candidates[0]
-          : { ...label, y: label.y + Math.max(0.02, label.height * 2), width: Math.max(0.25, label.width), height: 0.025 };
+        if (candidates.length > 0) {
+          // Group all items on the same y-line as the closest candidate
+          const primaryY = candidates[0].y;
+          const yLineTol = Math.max(0.01, label.height * 1.5);
+          const valueLine = candidates.filter((c) => Math.abs(c.y - primaryY) < yLineTol);
+          valueLine.sort((a, b) => a.x - b.x);
 
-        addField(fieldName, fieldName, rectItem, Math.max(0.2, rectItem.width));
+          const minX = valueLine[0].x;
+          const maxRight = valueLine.reduce((acc, c) => Math.max(acc, c.x + c.width), 0);
+          const primary = valueLine[0];
+
+          addField(fieldName, `{{${fieldName}}}`, {
+            ...primary,
+            x: Math.max(0, minX - 0.005),
+            y: Math.max(0, primary.y - 0.003),
+            width: Math.max(0.2, maxRight - minX + 0.01),
+            height: Math.max(0.025, primary.height + 0.005),
+          });
+        } else {
+          addField(fieldName, `{{${fieldName}}}`, {
+            ...label,
+            y: label.y + Math.max(0.02, label.height * 2),
+            width: Math.max(0.25, label.width),
+            height: 0.025,
+          });
+        }
       }
     }
   });
