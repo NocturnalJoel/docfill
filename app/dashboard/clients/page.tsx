@@ -455,7 +455,7 @@ export default function ClientsPage() {
               <UploadDropzone
                 onUpload={handleUpload}
                 disabled={isUploading}
-                label={isUploading ? 'Uploading...' : 'Upload client document (PDF or DOCX)'}
+                label={isUploading ? 'Uploading...' : 'Upload client document (PDF)'}
                 className="mb-4"
               />
 
