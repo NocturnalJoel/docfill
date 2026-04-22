@@ -55,6 +55,75 @@ export function detectPdfClientFields(items: PdfTextItem[]): DetectedField[] {
       handledIds.add(i);
     }
 
+    // Pass 3: "uppercase label above value" — label on one line, value directly below
+    // e.g. FULL LEGAL NAME / Martin Gagnon stacked vertically
+    {
+      // Identify candidate labels: all-caps, 4+ letters
+      const aboveLabelIdxs = new Set<number>();
+      for (let i = 0; i < pageItems.length; i++) {
+        if (handledIds.has(i)) continue;
+        const text = pageItems[i].str.trim();
+        if (text.length < 3 || text.length > 80) continue;
+        if (text !== text.toUpperCase()) continue;
+        const letterCount = (text.match(/[A-Za-z]/g) || []).length;
+        if (letterCount >= 4) aboveLabelIdxs.add(i);
+      }
+
+      for (const labelIdx of aboveLabelIdxs) {
+        if (handledIds.has(labelIdx)) continue;
+        const label = pageItems[labelIdx];
+        const yGap = Math.max(0.06, label.height * 5);
+
+        // Find value candidates: below label, x overlaps, NOT also an uppercase label
+        const candidates: Array<{ item: PdfTextItem; idx: number }> = [];
+        for (let i = 0; i < pageItems.length; i++) {
+          if (handledIds.has(i) || aboveLabelIdxs.has(i) || i === labelIdx) continue;
+          const v = pageItems[i];
+          if (!v.str.trim()) continue;
+          if (v.y <= label.y || v.y - label.y > yGap) continue;
+          // x must overlap with label
+          const labelRight = label.x + label.width;
+          const vRight = v.x + v.width;
+          if (v.x > labelRight + 0.05 || vRight < label.x - 0.05) continue;
+          candidates.push({ item: v, idx: i });
+        }
+
+        if (candidates.length === 0) continue;
+
+        // Take the row closest below the label
+        candidates.sort((a, b) => a.item.y - b.item.y);
+        const primaryY = candidates[0].item.y;
+        const yLineTol = Math.max(0.01, label.height * 1.5);
+        const valueLine = candidates.filter((c) => Math.abs(c.item.y - primaryY) < yLineTol);
+        valueLine.sort((a, b) => a.item.x - b.item.x);
+
+        const value = valueLine.map((c) => c.item.str).join(' ').trim();
+        if (!value || value.length > 200) continue;
+
+        const minX = valueLine[0].item.x;
+        const maxRight = valueLine.reduce((acc, c) => Math.max(acc, c.item.x + c.item.width), 0);
+        const primary = valueLine[0].item;
+
+        fields.push({
+          id: uuidv4(),
+          fieldName: label.str.trim(),
+          value,
+          rectangle: {
+            x: Math.max(0, minX - 0.005),
+            y: Math.max(0, primary.y - 0.003),
+            width: Math.max(0.04, maxRight - minX + 0.01),
+            height: Math.max(0.022, primary.height + 0.008),
+            pageNumber,
+          },
+          color: getFieldColor(fields.length),
+          confirmed: false,
+        });
+
+        handledIds.add(labelIdx);
+        for (const c of valueLine) handledIds.add(c.idx);
+      }
+    }
+
     // Pass 2: standalone labels ("Full Name:") matched to nearby value items
     const labelItems: Array<{ item: PdfTextItem; idx: number }> = [];
     const valuePool: PdfTextItem[] = [];
