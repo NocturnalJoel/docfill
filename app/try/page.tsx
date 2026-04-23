@@ -509,7 +509,7 @@ export default function TryPage() {
           {templateFile && <FilePill name={templateFile.name} />}
 
           <p className="text-sm text-black/50 mb-5 mt-3">
-            Reposition the field rectangles on your template if needed, then verify the value mappings below.
+            Reposition the field rectangles on your template if needed, then verify the fields and map them to client values below.
           </p>
 
           {templateFileUrl && (
@@ -520,10 +520,12 @@ export default function TryPage() {
                 fields={templateFields}
                 onFieldsChange={(fields) => {
                   const tf = fields as TemplateField[];
-                  setTemplateFields(tf);
+                  const wasDeleted = tf.length < templateFields.length;
+                  const updated = wasDeleted ? tf.map((f) => ({ ...f, confirmed: false })) : tf;
+                  setTemplateFields(updated);
                   setMappingRows((prev) => {
                     const byName = new Map(prev.map((r) => [r.templateField, r]));
-                    return tf.map((f) => {
+                    return updated.map((f) => {
                       const existing = byName.get(f.fieldName);
                       return existing
                         ? { ...existing, id: f.id, templateField: f.fieldName }
@@ -532,13 +534,83 @@ export default function TryPage() {
                   });
                 }}
                 onSave={async (fields) => {
-                  const tf = fields as TemplateField[];
-                  setTemplateFields(tf);
+                  setTemplateFields(fields as TemplateField[]);
                 }}
                 mode="template"
               />
             </div>
           )}
+
+          {/* ── Template field list (mirrors dashboard template section) ── */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-base font-bold">Template fields</h2>
+              {templateFields.some((f) => !f.confirmed) && (
+                <button
+                  onClick={() => setTemplateFields((prev) => prev.map((f) => ({ ...f, confirmed: true })))}
+                  className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-200 transition-colors"
+                >
+                  <Check size={12} />
+                  Confirm All ({templateFields.filter((f) => !f.confirmed).length})
+                </button>
+              )}
+            </div>
+            <p className="text-sm text-black/40 mb-4">Verify field names. Click Confirm to mark a field as correct.</p>
+
+            <div className="rounded-xl border border-black/10 overflow-hidden">
+              <div className="grid grid-cols-[1fr_auto_auto] text-xs font-semibold text-black/40 px-4 py-2 border-b border-black/5 bg-black/[0.02]">
+                <span>Field name</span>
+                <span />
+                <span />
+              </div>
+              <div className="divide-y divide-black/5">
+                {templateFields.length === 0 && (
+                  <p className="px-4 py-4 text-sm text-black/30 italic">No fields detected — add them manually in the viewer above.</p>
+                )}
+                {templateFields.map((field) => (
+                  <div key={field.id} className="grid grid-cols-[1fr_auto_auto] gap-2 px-4 py-2 items-center">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: field.color }} />
+                      <input
+                        className="text-sm text-black/70 font-medium bg-transparent border-b border-transparent hover:border-black/20 focus:border-black focus:outline-none py-0.5 w-full min-w-0"
+                        value={field.fieldName}
+                        placeholder="Field name"
+                        onChange={(e) => {
+                          const newName = e.target.value;
+                          setTemplateFields((prev) => prev.map((f) => f.id === field.id ? { ...f, fieldName: newName, confirmed: false } : f));
+                          setMappingRows((prev) => prev.map((r) => r.id === field.id ? { ...r, templateField: newName } : r));
+                        }}
+                      />
+                    </div>
+                    {field.confirmed ? (
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                        <Check size={10} /> Confirmed
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setTemplateFields((prev) => prev.map((f) => f.id === field.id ? { ...f, confirmed: true } : f))}
+                        className="flex items-center gap-1 text-[11px] font-medium text-amber-600 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-full whitespace-nowrap transition-colors"
+                      >
+                        <Check size={10} /> Confirm
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        const remaining = templateFields
+                          .filter((f) => f.id !== field.id)
+                          .map((f) => ({ ...f, confirmed: false }));
+                        setTemplateFields(remaining);
+                        setMappingRows((prev) => prev.filter((r) => r.id !== field.id));
+                      }}
+                      className="text-black/20 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
 
           <h2 className="text-base font-bold mb-4">Field mapping</h2>
 
@@ -585,12 +657,25 @@ export default function TryPage() {
             <Plus size={14} /> Add field
           </button>
 
-          <button
-            onClick={() => setStep(4)}
-            className="w-full bg-black text-white py-3 rounded-xl font-semibold hover:bg-black/80 transition-colors flex items-center justify-center gap-2"
-          >
-            Continue <ArrowRight size={16} />
-          </button>
+          {(() => {
+            const unconfirmedTemplate = templateFields.filter((f) => !f.confirmed).length;
+            return (
+              <div className="flex items-center justify-end gap-4">
+                {unconfirmedTemplate > 0 && (
+                  <span className="text-sm text-amber-600">
+                    {unconfirmedTemplate} field{unconfirmedTemplate !== 1 ? 's' : ''} still unconfirmed
+                  </span>
+                )}
+                <button
+                  onClick={() => setStep(4)}
+                  disabled={unconfirmedTemplate > 0}
+                  className="flex items-center gap-2 bg-black text-white px-6 py-3 rounded-xl font-semibold hover:bg-black/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Continue <ArrowRight size={16} />
+                </button>
+              </div>
+            );
+          })()}
         </div>
       )}
 
