@@ -416,7 +416,7 @@ export function detectPdfTemplateFields(items: PdfTextItem[]): TemplateField[] {
     byPage.get(item.pageNumber)!.push(item);
   }
 
-  byPage.forEach((pageItems) => {
+  byPage.forEach((pageItems, pageNumber) => {
     const sorted = [...pageItems].sort((a, b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
 
     // --- Pass 1: scan individual items for explicit placeholders ---
