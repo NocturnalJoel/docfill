@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   FileText, File, Trash2, Edit3, Loader2, AlertCircle, X, Check, Plus,
 } from 'lucide-react';
@@ -35,7 +35,6 @@ export default function TemplatesPage() {
   const [fieldsSaved, setFieldsSaved] = useState(false);
 
   const selectedTemplate = templates.find((t) => t.id === selectedId) || null;
-  const prevSelectedIdRef = useRef<string | null>(null);
 
   useEffect(() => { fetchTemplates(); }, []);
 
@@ -52,31 +51,30 @@ export default function TemplatesPage() {
     }
   };
 
+  // Reset local field state only when the selected template ID changes.
+  // Do NOT depend on selectedTemplate object — saves replace it with a new reference
+  // on every response, which would wipe local edits mid-session.
   useEffect(() => {
-    // Only reset local state when the user actually switches to a different template.
-    // Saves call setTemplates which gives selectedTemplate a new reference on every
-    // response — we must not reset on those, or confirmed/edited state gets wiped.
-    if (prevSelectedIdRef.current === selectedId) return;
-    prevSelectedIdRef.current = selectedId;
-
-    if (!selectedTemplate) {
+    if (!selectedId) {
       setCurrentFields([]); setLocalFields([]); setDirtyFieldIds(new Set()); setWordHtml(undefined); return;
     }
-    const fields = selectedTemplate.fields || [];
+    const template = templates.find((t) => t.id === selectedId);
+    if (!template) return;
+    const fields = template.fields || [];
     setCurrentFields(fields);
     setLocalFields(fields);
     setDirtyFieldIds(new Set());
-    setNewName(selectedTemplate.name);
-    if (selectedTemplate.fileType === 'word') {
+    setNewName(template.name);
+    if (template.fileType === 'word') {
       setWordHtml(undefined);
-      fetch(`/api/files/${selectedTemplate.id}?html=true`)
+      fetch(`/api/files/${template.id}?html=true`)
         .then((r) => (r.ok ? r.text() : null))
         .then((html) => { if (html) setWordHtml(html); })
         .catch(() => {});
     } else {
       setWordHtml(undefined);
     }
-  }, [selectedTemplate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpload = async (file: File) => {
     setIsUploading(true);
