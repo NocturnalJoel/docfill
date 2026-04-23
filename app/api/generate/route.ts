@@ -343,7 +343,13 @@ async function generatePdfDocument(
     const rectWidth = field.rectangle.width * pageWidth;
     const rectHeight = field.rectangle.height * pageHeight;
 
-    const fontSize = Math.min(12, rectHeight * 0.7);
+    const availableWidth = rectWidth - 4;
+    // Start from height-based size, then shrink to fit width on a single line.
+    let fontSize = Math.min(12, rectHeight * 0.7);
+    const rawTextWidth = font.widthOfTextAtSize(value, fontSize);
+    if (rawTextWidth > availableWidth) {
+      fontSize = Math.max(4, fontSize * (availableWidth / rawTextWidth));
+    }
 
     page.drawRectangle({ x, y, width: rectWidth, height: rectHeight, color: rgb(1, 1, 1) });
 
@@ -354,11 +360,11 @@ async function generatePdfDocument(
       size: fontSize,
       font,
       color: rgb(0, 0, 0),
-      maxWidth: rectWidth - 4,
+      // No maxWidth — we've already sized the text to fit in one line.
     });
 
     if (underlinedFields.has(field.fieldName)) {
-      const textWidth = Math.min(font.widthOfTextAtSize(value, fontSize), rectWidth - 4);
+      const textWidth = Math.min(font.widthOfTextAtSize(value, fontSize), availableWidth);
       page.drawLine({
         start: { x: x + 2, y: textY - 1 },
         end: { x: x + 2 + textWidth, y: textY - 1 },
