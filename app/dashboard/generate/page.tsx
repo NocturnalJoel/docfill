@@ -74,6 +74,16 @@ export default function GeneratePage() {
       .catch(() => setError('Failed to load documents'));
   }, [selectedClientId]);
 
+  // Refresh template data when a template is selected so edits made in the
+  // Templates tab (field deletions, renames) are reflected here without a page reload.
+  useEffect(() => {
+    if (!selectedTemplateId) return;
+    fetch('/api/templates')
+      .then((r) => r.json())
+      .then((data) => { if (data.templates) setTemplates(data.templates); })
+      .catch(() => {});
+  }, [selectedTemplateId]);
+
   useEffect(() => {
     if (!selectedTemplate) return;
     const templateFieldNames = selectedTemplate.fields.map((f) => f.fieldName);

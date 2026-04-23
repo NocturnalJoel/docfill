@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FileText, File, Trash2, Edit3, Loader2, AlertCircle, X, Check, Plus,
 } from 'lucide-react';
@@ -33,6 +33,7 @@ export default function TemplatesPage() {
   const [wordHtml, setWordHtml] = useState<string | undefined>(undefined);
 
   const selectedTemplate = templates.find((t) => t.id === selectedId) || null;
+  const prevSelectedIdRef = useRef<string | null>(null);
 
   useEffect(() => { fetchTemplates(); }, []);
 
@@ -50,6 +51,12 @@ export default function TemplatesPage() {
   };
 
   useEffect(() => {
+    // Only reset local state when the user actually switches to a different template.
+    // Saves call setTemplates which gives selectedTemplate a new reference on every
+    // response — we must not reset on those, or confirmed/edited state gets wiped.
+    if (prevSelectedIdRef.current === selectedId) return;
+    prevSelectedIdRef.current = selectedId;
+
     if (!selectedTemplate) {
       setCurrentFields([]); setLocalFields([]); setDirtyFieldIds(new Set()); setWordHtml(undefined); return;
     }
@@ -67,7 +74,7 @@ export default function TemplatesPage() {
     } else {
       setWordHtml(undefined);
     }
-  }, [selectedTemplate]);
+  }, [selectedTemplate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpload = async (file: File) => {
     setIsUploading(true);
