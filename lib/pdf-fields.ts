@@ -302,11 +302,18 @@ export function detectPdfTemplateFields(items: PdfTextItem[]): TemplateField[] {
         if (letterCount >= 4) aboveLabelItems.add(item);
       }
 
-      const seenNames = new Set(fields.map((f) => f.fieldName.toLowerCase()));
+      // Fields detected by earlier passes — don't re-detect these
+      const seenBeforePass3 = new Set(fields.map((f) => f.fieldName.toLowerCase()));
+      // Track last y per field name in Pass 3 to allow same name in separate sections
+      const pass3SeenY = new Map<string, number>();
 
       for (const label of aboveLabelItems) {
         const fieldName = label.str.trim();
-        if (seenNames.has(fieldName.toLowerCase())) continue;
+        const key = fieldName.toLowerCase();
+        if (seenBeforePass3.has(key)) continue;
+        // Allow same name again only if it's in a clearly different section (y-distance > 0.08)
+        const prevY = pass3SeenY.get(key);
+        if (prevY !== undefined && Math.abs(label.y - prevY) < 0.08) continue;
 
         const yGap = Math.max(0.06, label.height * 5);
 
@@ -360,7 +367,7 @@ export function detectPdfTemplateFields(items: PdfTextItem[]): TemplateField[] {
             color: getFieldColor(fields.length),
           });
         }
-        seenNames.add(fieldName.toLowerCase());
+        pass3SeenY.set(key, label.y);
       }
     }
   });

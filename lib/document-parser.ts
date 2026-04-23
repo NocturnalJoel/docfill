@@ -550,10 +550,19 @@ export function detectPdfTemplateFields(items: PdfTextItem[]): TemplateField[] {
         if (letterCount >= 4) aboveLabelIdxs.add(i);
       }
 
+      // Track last detected y per field name within Pass 3 to allow same name in separate sections
+      const pass3SeenY = new Map<string, number>();
+
       for (const labelIdx of aboveLabelIdxs) {
         const label = pageItems[labelIdx];
         const fieldName = label.str.trim();
-        if (seenFieldNames.has(fieldName.toLowerCase())) continue;
+        const key = fieldName.toLowerCase();
+
+        // Skip fields already detected by Pass 1/2 (explicit placeholders/underscores)
+        if (seenFieldNames.has(key)) continue;
+        // Allow same name again only if it's in a clearly different section (y-distance > 0.08)
+        const prevY = pass3SeenY.get(key);
+        if (prevY !== undefined && Math.abs(label.y - prevY) < 0.08) continue;
 
         const yGap = Math.max(0.06, label.height * 5);
 
@@ -582,21 +591,35 @@ export function detectPdfTemplateFields(items: PdfTextItem[]): TemplateField[] {
           const maxRight = valueLine.reduce((acc, c) => Math.max(acc, c.x + c.width), 0);
           const primary = valueLine[0];
 
-          addField(fieldName, `{{${fieldName}}}`, {
-            ...primary,
-            x: Math.max(0, minX - 0.005),
-            y: Math.max(0, primary.y - 0.003),
-            width: Math.max(0.2, maxRight - minX + 0.01),
-            height: Math.max(0.025, primary.height + 0.005),
+          fields.push({
+            id: uuidv4(),
+            fieldName,
+            placeholder: `{{${fieldName}}}`,
+            rectangle: {
+              x: Math.max(0, minX - 0.005),
+              y: Math.max(0, primary.y - 0.003),
+              width: Math.max(0.2, maxRight - minX + 0.01),
+              height: Math.max(0.025, primary.height + 0.005),
+              pageNumber,
+            },
+            color: getFieldColor(colorIndex++),
           });
         } else {
-          addField(fieldName, `{{${fieldName}}}`, {
-            ...label,
-            y: label.y + Math.max(0.02, label.height * 2),
-            width: Math.max(0.25, label.width),
-            height: 0.025,
+          fields.push({
+            id: uuidv4(),
+            fieldName,
+            placeholder: `{{${fieldName}}}`,
+            rectangle: {
+              x: Math.max(0, label.x - 0.005),
+              y: label.y + Math.max(0.02, label.height * 2),
+              width: Math.max(0.25, label.width),
+              height: 0.025,
+              pageNumber,
+            },
+            color: getFieldColor(colorIndex++),
           });
         }
+        pass3SeenY.set(key, label.y);
       }
     }
   });
