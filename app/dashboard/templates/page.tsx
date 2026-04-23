@@ -31,6 +31,8 @@ export default function TemplatesPage() {
   const [localFields, setLocalFields] = useState<TemplateField[]>([]);
   const [dirtyFieldIds, setDirtyFieldIds] = useState<Set<string>>(new Set());
   const [wordHtml, setWordHtml] = useState<string | undefined>(undefined);
+  const [isSavingFields, setIsSavingFields] = useState(false);
+  const [fieldsSaved, setFieldsSaved] = useState(false);
 
   const selectedTemplate = templates.find((t) => t.id === selectedId) || null;
   const prevSelectedIdRef = useRef<string | null>(null);
@@ -127,6 +129,8 @@ export default function TemplatesPage() {
 
   const saveFields = async (fields: TemplateField[]) => {
     if (!selectedId || !selectedTemplate) return;
+    setIsSavingFields(true);
+    setFieldsSaved(false);
     const res = await fetch(`/api/templates/${selectedId}/fields`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -135,7 +139,10 @@ export default function TemplatesPage() {
     if (res.ok) {
       const data = await res.json();
       setTemplates((prev) => prev.map((t) => t.id === data.template.id ? data.template : t));
+      setFieldsSaved(true);
+      setTimeout(() => setFieldsSaved(false), 2000);
     }
+    setIsSavingFields(false);
   };
 
   const handleSaveFields = useCallback(
@@ -251,7 +258,7 @@ export default function TemplatesPage() {
                         {template.name}
                       </div>
                       <div className="text-xs text-black/30">
-                        {template.fields.length} fields • {template.fileType.toUpperCase()}
+                        {active ? localFields.length : template.fields.length} fields • {template.fileType.toUpperCase()}
                       </div>
                     </div>
                   </button>
@@ -337,7 +344,17 @@ export default function TemplatesPage() {
             {/* Template fields list */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <h3 className="font-bold text-black">Template fields</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-black">Template fields</h3>
+                  {isSavingFields && (
+                    <Loader2 size={12} className="animate-spin text-black/30" />
+                  )}
+                  {fieldsSaved && !isSavingFields && (
+                    <span className="flex items-center gap-1 text-[11px] text-emerald-600">
+                      <Check size={10} /> Saved
+                    </span>
+                  )}
+                </div>
                 {localFields.some((f) => !f.confirmed || dirtyFieldIds.has(f.id)) && (
                   <button
                     onClick={handleConfirmAll}
