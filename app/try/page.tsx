@@ -387,7 +387,7 @@ export default function TryPage() {
             fields={detectedFields}
             onFieldsChange={(fields) => {
               const f = fields as DetectedField[];
-              if (f.length < detectedFieldsLengthRef.current) {
+              if (f.length !== detectedFieldsLengthRef.current) {
                 setHasPendingClientChange(true);
                 setDetectedFields(f.map((field) => ({ ...field, confirmed: false })));
               } else {

@@ -866,7 +866,7 @@ function createNewField(
       value: '',
       rectangle,
       color,
-      confirmed: true,
+      confirmed: false,
     } as DetectedField;
   }
 }
