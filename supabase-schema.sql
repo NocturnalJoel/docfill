@@ -5,6 +5,23 @@
 -- TABLES
 -- ============================================================
 
+create table public.subscriptions (
+  id                     uuid primary key default gen_random_uuid(),
+  user_id                uuid references auth.users not null unique,
+  stripe_customer_id     text unique,
+  stripe_subscription_id text,
+  status                 text not null default 'active', -- 'active' | 'cancelled'
+  plan                   text,                           -- 'monthly' | 'yearly'
+  created_at             timestamptz default now(),
+  updated_at             timestamptz default now()
+);
+
+alter table public.subscriptions enable row level security;
+
+create policy "Users read own subscription"
+  on public.subscriptions for select
+  using (auth.uid() = user_id);
+
 create table public.templates (
   id          uuid primary key,
   user_id     uuid references auth.users not null,

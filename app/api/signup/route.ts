@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     // Create the confirmed Supabase user
     const admin = createAdminClient();
-    const { error: createError } = await admin.auth.admin.createUser({
+    const { data: createData, error: createError } = await admin.auth.admin.createUser({
       email: email.trim().toLowerCase(),
       password,
       email_confirm: true,
@@ -51,6 +51,17 @@ export async function POST(request: NextRequest) {
         );
       }
       return NextResponse.json({ error: createError.message }, { status: 400 });
+    }
+
+    // Record the subscription so the dashboard gate can verify access
+    if (createData?.user) {
+      await admin.from('subscriptions').insert({
+        user_id: createData.user.id,
+        stripe_customer_id: session.customer as string,
+        stripe_subscription_id: session.subscription as string,
+        status: 'active',
+        plan: session.metadata?.plan ?? 'monthly',
+      });
     }
 
     return NextResponse.json({ success: true });

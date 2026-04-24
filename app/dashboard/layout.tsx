@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { getSession } from '@/lib/auth';
+import { getSession, hasActiveSubscription } from '@/lib/auth';
 import Navbar from '@/components/Navbar';
 
 export default async function DashboardLayout({
@@ -15,6 +15,13 @@ export default async function DashboardLayout({
 
   if (!session && !devBypass) {
     redirect('/login');
+  }
+
+  if (session && !devBypass) {
+    const active = await hasActiveSubscription(session.userId);
+    if (!active) {
+      redirect('/subscribe');
+    }
   }
 
   return (

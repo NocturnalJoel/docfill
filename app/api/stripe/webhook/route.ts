@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// TODO: Add STRIPE_WEBHOOK_SECRET to .env.local once you have a domain
-// and register https://your-domain.com/api/stripe/webhook in the Stripe dashboard.
-// Events to listen for: checkout.session.completed, customer.subscription.deleted
 
 export async function POST(request: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -31,19 +28,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
+  const admin = createAdminClient();
+
   switch (event.type) {
-    case 'checkout.session.completed': {
-      const session = event.data.object;
-      console.log('Checkout completed:', session.id, 'customer:', session.customer);
-      // TODO: Store subscription status in Supabase tied to the user
+    case 'customer.subscription.updated': {
+      const subscription = event.data.object;
+      const status = subscription.status === 'active' ? 'active' : 'cancelled';
+      await admin
+        .from('subscriptions')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('stripe_subscription_id', subscription.id);
       break;
     }
+
     case 'customer.subscription.deleted': {
       const subscription = event.data.object;
-      console.log('Subscription cancelled:', subscription.id);
-      // TODO: Revoke access in Supabase for this customer
+      await admin
+        .from('subscriptions')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('stripe_subscription_id', subscription.id);
       break;
     }
+
     default:
       break;
   }

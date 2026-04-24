@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
       success_url: `${origin}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/subscribe`,
       allow_promotion_codes: true,
+      metadata: { plan },
     });
 
     return NextResponse.json({ url: session.url });
