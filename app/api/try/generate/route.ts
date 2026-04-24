@@ -86,7 +86,12 @@ async function generatePdfDocument(
     const rectWidth = field.rectangle.width * pageWidth;
     const rectHeight = field.rectangle.height * pageHeight;
 
-    const fontSize = Math.min(12, rectHeight * 0.7);
+    const availableWidth = rectWidth - 4;
+    let fontSize = Math.min(12, rectHeight * 0.7);
+    const rawTextWidth = font.widthOfTextAtSize(field.value, fontSize);
+    if (rawTextWidth > availableWidth) {
+      fontSize = Math.max(4, fontSize * (availableWidth / rawTextWidth));
+    }
 
     page.drawRectangle({ x, y, width: rectWidth, height: rectHeight, color: rgb(1, 1, 1) });
 
@@ -97,7 +102,6 @@ async function generatePdfDocument(
       size: fontSize,
       font,
       color: rgb(0, 0, 0),
-      maxWidth: rectWidth - 4,
     });
   }
 
