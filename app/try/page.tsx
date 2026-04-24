@@ -523,6 +523,7 @@ export default function TryPage() {
                   const tf = fields as TemplateField[];
                   const wasDeleted = tf.length < templateFields.length;
                   const updated = wasDeleted ? tf.map((f) => ({ ...f, confirmed: false })) : tf;
+                  if (wasDeleted) setHasPendingDeletion(true);
                   setTemplateFields(updated);
                   setMappingRows((prev) => {
                     const byName = new Map(prev.map((r) => [r.templateField, r]));

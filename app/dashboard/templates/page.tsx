@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FileText, File, Trash2, Edit3, Loader2, AlertCircle, X, Check, Plus,
 } from 'lucide-react';
@@ -34,6 +34,7 @@ export default function TemplatesPage() {
   const [isSavingFields, setIsSavingFields] = useState(false);
   const [fieldsSaved, setFieldsSaved] = useState(false);
   const [hasPendingDeletion, setHasPendingDeletion] = useState(false);
+  const localFieldsLengthRef = useRef(0);
 
   const selectedTemplate = templates.find((t) => t.id === selectedId) || null;
 
@@ -160,10 +161,22 @@ export default function TemplatesPage() {
     [selectedId]
   );
 
+  // Keep ref in sync so handleFieldsChange can detect viewer-based deletions
+  // without being recreated on every render (which would cascade into pdf detection effects).
+  localFieldsLengthRef.current = localFields.length;
+
   const handleFieldsChange = useCallback((fields: TemplateField[] | unknown) => {
     const f = fields as TemplateField[];
-    setCurrentFields(f);
-    setLocalFields(f);
+    if (f.length < localFieldsLengthRef.current) {
+      // Field deleted from the viewer rectangle UI — mark remaining unconfirmed
+      const marked = f.map((field) => ({ ...field, confirmed: false }));
+      setHasPendingDeletion(true);
+      setCurrentFields(marked);
+      setLocalFields(marked);
+    } else {
+      setCurrentFields(f);
+      setLocalFields(f);
+    }
   }, []);
 
   const handleFieldEdit = (id: string, val: string) => {
