@@ -33,6 +33,7 @@ export default function TemplatesPage() {
   const [wordHtml, setWordHtml] = useState<string | undefined>(undefined);
   const [isSavingFields, setIsSavingFields] = useState(false);
   const [fieldsSaved, setFieldsSaved] = useState(false);
+  const [hasPendingDeletion, setHasPendingDeletion] = useState(false);
 
   const selectedTemplate = templates.find((t) => t.id === selectedId) || null;
 
@@ -56,7 +57,7 @@ export default function TemplatesPage() {
   // on every response, which would wipe local edits mid-session.
   useEffect(() => {
     if (!selectedId) {
-      setCurrentFields([]); setLocalFields([]); setDirtyFieldIds(new Set()); setWordHtml(undefined); return;
+      setCurrentFields([]); setLocalFields([]); setDirtyFieldIds(new Set()); setWordHtml(undefined); setHasPendingDeletion(false); return;
     }
     const template = templates.find((t) => t.id === selectedId);
     if (!template) return;
@@ -64,6 +65,7 @@ export default function TemplatesPage() {
     setCurrentFields(fields);
     setLocalFields(fields);
     setDirtyFieldIds(new Set());
+    setHasPendingDeletion(false);
     setNewName(template.name);
     if (template.fileType === 'word') {
       setWordHtml(undefined);
@@ -180,10 +182,10 @@ export default function TemplatesPage() {
   };
 
   const handleDeleteField = async (id: string) => {
-    // Mark remaining fields unconfirmed so Confirm All always reappears after a deletion.
     const updated = localFields
       .filter((f) => f.id !== id)
       .map((f) => ({ ...f, confirmed: false }));
+    setHasPendingDeletion(true);
     setLocalFields(updated);
     setCurrentFields(updated);
     setDirtyFieldIds(new Set());
@@ -192,6 +194,7 @@ export default function TemplatesPage() {
 
   const handleConfirmAll = async () => {
     const updated = localFields.map((f) => ({ ...f, confirmed: true }));
+    setHasPendingDeletion(false);
     setLocalFields(updated);
     setCurrentFields(updated);
     setDirtyFieldIds(new Set());
@@ -356,7 +359,7 @@ export default function TemplatesPage() {
                     </span>
                   )}
                 </div>
-                {localFields.some((f) => !f.confirmed || dirtyFieldIds.has(f.id)) && (
+                {(hasPendingDeletion || localFields.some((f) => !f.confirmed || dirtyFieldIds.has(f.id))) && (
                   <button
                     onClick={handleConfirmAll}
                     className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-200 transition-colors"

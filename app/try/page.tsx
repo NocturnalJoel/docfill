@@ -54,6 +54,7 @@ export default function TryPage() {
   const [isDraggingTemplate, setIsDraggingTemplate] = useState(false);
   const templateFileRef = useRef<HTMLInputElement>(null);
   const [mappingRows, setMappingRows] = useState<MappingRow[]>([]);
+  const [hasPendingDeletion, setHasPendingDeletion] = useState(false);
 
   // Step 4 state
   const [email, setEmail] = useState('');
@@ -545,9 +546,12 @@ export default function TryPage() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-1">
               <h2 className="text-base font-bold">Template fields</h2>
-              {templateFields.some((f) => !f.confirmed) && (
+              {(hasPendingDeletion || templateFields.some((f) => !f.confirmed)) && (
                 <button
-                  onClick={() => setTemplateFields((prev) => prev.map((f) => ({ ...f, confirmed: true })))}
+                  onClick={() => {
+                    setHasPendingDeletion(false);
+                    setTemplateFields((prev) => prev.map((f) => ({ ...f, confirmed: true })));
+                  }}
                   className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-200 transition-colors"
                 >
                   <Check size={12} />
@@ -596,6 +600,7 @@ export default function TryPage() {
                     )}
                     <button
                       onClick={() => {
+                        setHasPendingDeletion(true);
                         const remaining = templateFields
                           .filter((f) => f.id !== field.id)
                           .map((f) => ({ ...f, confirmed: false }));
